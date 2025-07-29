@@ -4,3 +4,10 @@
 ---
 metadata:
   namespace: {{.Values.namespace}}
+
+#@overlay/match by=overlay.subset({"metadata": {"name": "kro-cluster-role-binding"}}), expects="1+"
+---
+subjects:
+  #@overlay/match by="name"
+- name: {{ include "kro.serviceAccountName" . }}
+  namespace: {{.Values.namespace}}

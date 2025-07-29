@@ -2,17 +2,17 @@ apiVersion: data.packaging.carvel.dev/v1alpha1
 kind: Package
 metadata:
   creationTimestamp: null
-  name: kro.fling.vsphere.vmware.com.1.0.1
+  name: kro.field.vmware.com.1.0.2
 spec:
-  refName: kro.fling.vsphere.vmware.com
-  releasedAt: "2025-07-29T17:06:49Z"
+  refName: kro.field.vmware.com
+  releasedAt: "2025-07-29T21:00:06Z"
   template:
     spec:
       deploy:
       - kapp: {}
       fetch:
       - imgpkgBundle:
-          image: ghcr.io/warroyo/kro-supervisor-service@sha256:bd136a324bcd378b47e8b1f8c1e74aca93e5cec7b7f4c29c1b87dfe563966061
+          image: ghcr.io/warroyo/kro-supervisor-service@sha256:e4285213e85dd866f3482294ac8a6dde2e4805b7762fe6ba0d62935e6c9e347b
       template:
       - helmTemplate:
           name: kro
@@ -33,6 +33,9 @@ spec:
           default: {}
           description: Additional labels that should be applied to all resources
           type: object
+        adminGroup:
+          default: ""
+          type: string
         config:
           description: Application configuration settings
           properties:
@@ -335,4 +338,4 @@ spec:
               type: string
           type: object
       type: object
-  version: 1.0.1
+  version: 1.0.2

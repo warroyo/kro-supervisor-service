@@ -2,9 +2,9 @@ apiVersion: data.packaging.carvel.dev/v1alpha1
 kind: Package
 metadata:
   creationTimestamp: null
-  name: kro.fling.vsphere.vmware.com.0.0.0
+  name: kro.field.vmware.com.0.0.0
 spec:
-  refName: kro.fling.vsphere.vmware.com
+  refName: kro.field.vmware.com
   releasedAt: null
   template:
     spec:
@@ -28,7 +28,7 @@ apiVersion: data.packaging.carvel.dev/v1alpha1
 kind: PackageMetadata
 metadata:
   creationTimestamp: null
-  name: kro.fling.vsphere.vmware.com
+  name: kro.field.vmware.com
 spec:
   displayName: kro
   longDescription: kro.fling.vsphere.vmware.com

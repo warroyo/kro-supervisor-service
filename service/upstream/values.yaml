@@ -1,5 +1,6 @@
 #additional data values for supervisor service
 namespace: ""
+adminGroup: ""
 ###
 
 # Override the name of the chart

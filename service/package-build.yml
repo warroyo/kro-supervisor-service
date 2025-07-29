@@ -2,7 +2,7 @@ apiVersion: kctrl.carvel.dev/v1alpha1
 kind: PackageBuild
 metadata:
   creationTimestamp: null
-  name: kro.fling.vsphere.vmware.com
+  name: kro.field.vmware.com
 spec:
   release:
   - resource: {}
