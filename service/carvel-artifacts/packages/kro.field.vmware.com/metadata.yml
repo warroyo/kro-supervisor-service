@@ -5,5 +5,5 @@ metadata:
   name: kro.field.vmware.com
 spec:
   displayName: kro
-  longDescription: kro.fling.vsphere.vmware.com
-  shortDescription: kro.fling.vsphere.vmware.com
+  longDescription: installs the KRO operator as a service
+  shortDescription: KRO operator

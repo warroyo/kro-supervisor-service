@@ -5,8 +5,8 @@ metadata:
   name: kro.field.vmware.com
 spec:
   displayName: kro
-  longDescription: kro.fling.vsphere.vmware.com
-  shortDescription: kro.fling.vsphere.vmware.com
+  longDescription: installs the KRO operator as a service
+  shortDescription: KRO operator
 
 ---
 apiVersion: data.packaging.carvel.dev/v1alpha1
@@ -16,7 +16,7 @@ metadata:
   name: kro.field.vmware.com.1.0.2
 spec:
   refName: kro.field.vmware.com
-  releasedAt: "2025-07-29T21:00:06Z"
+  releasedAt: "2025-07-29T21:02:38Z"
   template:
     spec:
       deploy:
