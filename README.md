@@ -13,6 +13,8 @@ This supervisor service can be used to install [KRO](https://kro.run/)
 
 ## Usage
 
+This service allows for users in the `adminGroup` that is defined to create resourceGraphDefinitions. These can then be consumed in namespaces by non admin users.
+
 Follow the docs for KRO [here](https://kro.run/docs/getting-started/deploy-a-resource-graph-definition)
 ## Development
  
