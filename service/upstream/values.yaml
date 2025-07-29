@@ -77,8 +77,7 @@ deployment:
     requests:
       cpu: 256m
       memory: 128Mi
-  nodeSelector:
-    kubernetes.io/os: linux
+  nodeSelector: {}
   tolerations: []
   affinity: {}
   priorityClassName: ""

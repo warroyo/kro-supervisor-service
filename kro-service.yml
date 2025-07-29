@@ -13,17 +13,17 @@ apiVersion: data.packaging.carvel.dev/v1alpha1
 kind: Package
 metadata:
   creationTimestamp: null
-  name: kro.fling.vsphere.vmware.com.1.0.0
+  name: kro.fling.vsphere.vmware.com.1.0.1
 spec:
   refName: kro.fling.vsphere.vmware.com
-  releasedAt: "2025-07-29T16:52:44Z"
+  releasedAt: "2025-07-29T17:06:49Z"
   template:
     spec:
       deploy:
       - kapp: {}
       fetch:
       - imgpkgBundle:
-          image: ghcr.io/warroyo/kro-supervisor-service@sha256:58c55a35aa2b0aeb5975e5d216f0fa4c3f1dcc50b677bf043f04710b2814e342
+          image: ghcr.io/warroyo/kro-supervisor-service@sha256:bd136a324bcd378b47e8b1f8c1e74aca93e5cec7b7f4c29c1b87dfe563966061
       template:
       - helmTemplate:
           name: kro
@@ -135,10 +135,7 @@ spec:
                 pod's hostname will be set to a system-defined value.
               type: boolean
             nodeSelector:
-              properties:
-                kubernetes.io/os:
-                  default: linux
-                  type: string
+              default: {}
               type: object
             podAnnotations:
               default: {}
@@ -349,4 +346,4 @@ spec:
               type: string
           type: object
       type: object
-  version: 1.0.0
+  version: 1.0.1
