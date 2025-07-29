@@ -1,0 +1,6 @@
+#@ load("@ytt:overlay", "overlay")
+
+#@overlay/match by=overlay.subset({"metadata": {"namespace": "kro"}}), expects="1+"
+---
+metadata:
+  namespace: {{.Values.namespace}}

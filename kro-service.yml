@@ -1,0 +1,352 @@
+apiVersion: data.packaging.carvel.dev/v1alpha1
+kind: PackageMetadata
+metadata:
+  creationTimestamp: null
+  name: kro.fling.vsphere.vmware.com
+spec:
+  displayName: kro
+  longDescription: kro.fling.vsphere.vmware.com
+  shortDescription: kro.fling.vsphere.vmware.com
+
+---
+apiVersion: data.packaging.carvel.dev/v1alpha1
+kind: Package
+metadata:
+  creationTimestamp: null
+  name: kro.fling.vsphere.vmware.com.1.0.0
+spec:
+  refName: kro.fling.vsphere.vmware.com
+  releasedAt: "2025-07-29T16:52:44Z"
+  template:
+    spec:
+      deploy:
+      - kapp: {}
+      fetch:
+      - imgpkgBundle:
+          image: ghcr.io/warroyo/kro-supervisor-service@sha256:58c55a35aa2b0aeb5975e5d216f0fa4c3f1dcc50b677bf043f04710b2814e342
+      template:
+      - helmTemplate:
+          name: kro
+          namespace: kro
+          path: upstream
+      - ytt:
+          ignoreUnknownComments: true
+          paths:
+          - '-'
+      - kbld:
+          paths:
+          - '-'
+          - .imgpkg/images.yml
+  valuesSchema:
+    openAPIv3:
+      properties:
+        additionalLabels:
+          default: {}
+          description: Additional labels that should be applied to all resources
+          type: object
+        config:
+          description: Application configuration settings
+          properties:
+            allowCRDDeletion:
+              default: false
+              description: Allow kro to delete CRDs
+              type: boolean
+            clientBurst:
+              default: 150
+              description: The number of requests that can be stored for processing
+                before the server starts enforcing the QPS limit
+              type: integer
+            clientQps:
+              default: 100
+              description: The maximum number of queries per second to allow
+              type: integer
+            dynamicControllerConcurrentReconciles:
+              default: 1
+              description: The number of dynamic controller reconciles to run in parallel
+              type: integer
+            dynamicControllerDefaultQueueMaxRetries:
+              default: 20
+              description: The maximum number of retries for an item in the queue
+                will be retried before being dropped
+              type: integer
+            dynamicControllerDefaultResyncPeriod:
+              default: 36000
+              description: The interval at which the controller will re list resources
+                even with no changes, in seconds
+              type: integer
+            dynamicControllerDefaultShutdownTimeout:
+              default: 60
+              description: The maximum duration to wait for the controller to gracefully
+                shutdown, in seconds
+              type: integer
+            enableLeaderElection:
+              default: false
+              description: Enable leader election for controller manager. Enabling
+                this will ensure there is only one active controller manager.
+              type: boolean
+            healthProbeBindAddress:
+              default: :8079
+              description: The address the probe endpoint binds to
+              type: string
+            logLevel:
+              default: 3
+              description: The log level verbosity. 0 is the least verbose, 5 is the
+                most verbose
+              type: integer
+            metricsBindAddress:
+              default: :8078
+              description: The address the metric endpoint binds to
+              type: string
+            resourceGraphDefinitionConcurrentReconciles:
+              default: 1
+              description: The number of resource graph definition reconciles to run
+                in parallel
+              type: integer
+          type: object
+        deployment:
+          properties:
+            affinity:
+              default: {}
+              type: object
+            containerPort:
+              default: 8078
+              description: Port that the container will expose
+              type: integer
+            dnsPolicy:
+              default: ClusterFirst
+              description: Set DNS policy for the pod. Defaults to "ClusterFirst".
+                Valid values are 'ClusterFirstWithHostNet', 'ClusterFirst', 'Default'
+                or 'None'. To have DNS options set along with hostNetwork, you have
+                to specify DNS policy explicitly to 'ClusterFirstWithHostNet'.
+              type: string
+            extraVolumeMounts:
+              default: []
+              description: Additional volume mount settings for Pods
+              items: {}
+              type: array
+            extraVolumes:
+              default: []
+              description: Additional volume settings for Pods
+              items: {}
+              type: array
+            hostNetwork:
+              default: false
+              description: Specifies the hostname of the Pod. If not specified, the
+                pod's hostname will be set to a system-defined value.
+              type: boolean
+            nodeSelector:
+              properties:
+                kubernetes.io/os:
+                  default: linux
+                  type: string
+              type: object
+            podAnnotations:
+              default: {}
+              description: Annotations to add to the Pod
+              type: object
+            podLabels:
+              default: {}
+              description: Labels to add to the Pod
+              type: object
+            podSecurityContext:
+              description: Security context settings at the Pod level
+              properties:
+                seccompProfile:
+                  properties:
+                    type:
+                      default: RuntimeDefault
+                      type: string
+                  type: object
+              type: object
+            priorityClassName:
+              default: ""
+              type: string
+            replicaCount:
+              default: 1
+              description: Number of replicas for the Pods to run
+              type: integer
+            resources:
+              description: Resource requests and limits settings
+              properties:
+                limits:
+                  properties:
+                    cpu:
+                      default: 1000m
+                      type: string
+                    memory:
+                      default: 1024Mi
+                      type: string
+                  type: object
+                requests:
+                  properties:
+                    cpu:
+                      default: 256m
+                      type: string
+                    memory:
+                      default: 128Mi
+                      type: string
+                  type: object
+              type: object
+            securityContext:
+              description: Security context settings at the container level
+              properties:
+                allowPrivilegeEscalation:
+                  default: false
+                  type: boolean
+                capabilities:
+                  properties:
+                    drop:
+                      default: []
+                      items:
+                        default: ALL
+                        type: string
+                      type: array
+                  type: object
+                privileged:
+                  default: false
+                  type: boolean
+                runAsNonRoot:
+                  default: true
+                  type: boolean
+                runAsUser:
+                  default: 1000
+                  type: integer
+              type: object
+            tolerations:
+              default: []
+              items: {}
+              type: array
+          type: object
+        fullnameOverride:
+          default: ""
+          description: Override the full name of the chart
+          type: string
+        image:
+          properties:
+            ko:
+              default: false
+              description: Ignores the repository and tag settings and uses the controllers
+                ko entrypoint.
+              type: boolean
+            pullPolicy:
+              default: IfNotPresent
+              description: 'Image pull policy (IfNotPresent: pull the image only if
+                it is not present locally)'
+              type: string
+            repository:
+              default: ghcr.io/kro-run/kro/controller
+              description: The location of the container image repository
+              type: string
+            tag:
+              default: 0.3.0
+              description: Overrides the image tag whose default is the chart appVersion.
+              type: string
+          type: object
+        imagePullSecrets:
+          default: []
+          description: List of secrets for pulling images from a private registry
+          items: {}
+          type: array
+        metrics:
+          properties:
+            service:
+              properties:
+                create:
+                  default: false
+                  description: Set to true to automatically create a Kubernetes Service
+                    resource for the Prometheus metrics server endpoint in controller
+                  type: boolean
+                port:
+                  default: 8080
+                  description: Port for the metrics service
+                  type: integer
+                type:
+                  default: ClusterIP
+                  type: string
+              type: object
+            serviceMonitor:
+              properties:
+                additionalLabels:
+                  default: {}
+                  description: Set of labels to transfer from the Kubernetes Service
+                    onto the target
+                  type: object
+                enabled:
+                  default: false
+                  description: Whether to create a ServiceMonitor
+                  type: boolean
+                interval:
+                  default: 1m
+                  description: Set how frequently Prometheus should scrape
+                  type: string
+                metricRelabelings:
+                  default: []
+                  description: MetricRelabelConfigs to apply to samples before ingestion
+                  items: {}
+                  type: array
+                relabelings:
+                  default: []
+                  description: '- action: replace   replacement: my-cluster   targetLabel:
+                    cluster'
+                  items: {}
+                  type: array
+                scrapeTimeout:
+                  default: 10s
+                  description: Set timeout for scrape
+                  type: string
+                targetLabels:
+                  default: []
+                  description: Set of labels to transfer from the Kubernetes Service
+                    onto the target
+                  items: {}
+                  type: array
+                telemetryPath:
+                  default: /metrics
+                  description: Set path to metrics path
+                  type: string
+              type: object
+          type: object
+        nameOverride:
+          default: ""
+          description: Override the name of the chart
+          type: string
+        namespace:
+          default: ""
+          description: additional data values for supervisor service
+          type: string
+        rbac:
+          properties:
+            mode:
+              default: unrestricted
+              description: 'Specifies how to manage access for kro in the cluster
+                Two modes are currently supported: - unrestricted: Grants cluster-wide
+                full access to all resources - aggregation: Grants a minimal set of
+                permissions for kro to manage its own                resources, and
+                additionally aggregates ClusterRoles with the                label
+                `rbac.kro.run/aggregate-to-controller: "true"` to allow                kro
+                users to extend kro''s permissions. Recommended setting is aggregation,
+                but unrestricted remains the default for backwards compatibility.'
+              type: string
+          type: object
+        serviceAccount:
+          properties:
+            annotations:
+              default: {}
+              description: Annotations to add to the service account
+              type: object
+            automount:
+              default: true
+              description: Automatically mount a ServiceAccount's API credentials?
+              type: boolean
+            create:
+              default: true
+              description: Specifies whether a service account should be created
+              type: boolean
+            name:
+              default: ""
+              description: The name of the service account to use. If not set and
+                create is true, a name is generated using the fullname template
+              type: string
+          type: object
+      type: object
+  version: 1.0.0

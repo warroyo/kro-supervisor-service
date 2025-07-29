@@ -1,0 +1,30 @@
+apiVersion: kctrl.carvel.dev/v1alpha1
+kind: PackageBuild
+metadata:
+  creationTimestamp: null
+  name: kro.fling.vsphere.vmware.com
+spec:
+  release:
+  - resource: {}
+  template:
+    spec:
+      app:
+        spec:
+          deploy:
+          - kapp: {}
+          template:
+          - helmTemplate:
+              name: kro
+              namespace: kro
+              path: upstream
+          - ytt:
+              ignoreUnknownComments: true
+              paths:
+              - '-'
+          - kbld: {}
+      export:
+      - imgpkgBundle:
+          image: ghcr.io/warroyo/kro-supervisor-service
+          useKbldImagesLock: true
+        includePaths:
+        - upstream

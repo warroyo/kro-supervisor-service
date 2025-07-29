@@ -1,0 +1,9 @@
+apiVersion: data.packaging.carvel.dev/v1alpha1
+kind: PackageMetadata
+metadata:
+  creationTimestamp: null
+  name: kro.fling.vsphere.vmware.com
+spec:
+  displayName: kro
+  longDescription: kro.fling.vsphere.vmware.com
+  shortDescription: kro.fling.vsphere.vmware.com
