@@ -79,7 +79,7 @@ deployment:
       cpu: 256m
       memory: 128Mi
   nodeSelector:
-    kubernetes.io/os: linux
+    kubernetes.io/os: CRX
   tolerations: []
   affinity: {}
   priorityClassName: ""
