@@ -13,17 +13,17 @@ apiVersion: data.packaging.carvel.dev/v1alpha1
 kind: Package
 metadata:
   creationTimestamp: null
-  name: kro.field.vmware.com.1.0.3
+  name: kro.field.vmware.com.1.0.4
 spec:
   refName: kro.field.vmware.com
-  releasedAt: "2025-09-15T22:44:02Z"
+  releasedAt: "2025-09-15T23:02:04Z"
   template:
     spec:
       deploy:
       - kapp: {}
       fetch:
       - imgpkgBundle:
-          image: ghcr.io/warroyo/kro-supervisor-service@sha256:c4241b025eac86660b2f73345dca000d975caff79a3f47617676302088a72104
+          image: ghcr.io/warroyo/kro-supervisor-service@sha256:97862fa6372b1ad670c46253ed6b72fce031b5a4a8cd4e670ab64ff0ccbfa05c
       template:
       - helmTemplate:
           name: kro
@@ -140,7 +140,7 @@ spec:
             nodeSelector:
               properties:
                 kubernetes.io/os:
-                  default: linux
+                  default: CRX
                   type: string
               type: object
             podAnnotations:
@@ -352,4 +352,4 @@ spec:
               type: string
           type: object
       type: object
-  version: 1.0.3
+  version: 1.0.4
