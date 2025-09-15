@@ -2,17 +2,17 @@ apiVersion: data.packaging.carvel.dev/v1alpha1
 kind: Package
 metadata:
   creationTimestamp: null
-  name: kro.field.vmware.com.1.0.2
+  name: kro.field.vmware.com.1.0.3
 spec:
   refName: kro.field.vmware.com
-  releasedAt: "2025-07-29T21:02:38Z"
+  releasedAt: "2025-09-15T22:44:02Z"
   template:
     spec:
       deploy:
       - kapp: {}
       fetch:
       - imgpkgBundle:
-          image: ghcr.io/warroyo/kro-supervisor-service@sha256:e4285213e85dd866f3482294ac8a6dde2e4805b7762fe6ba0d62935e6c9e347b
+          image: ghcr.io/warroyo/kro-supervisor-service@sha256:c4241b025eac86660b2f73345dca000d975caff79a3f47617676302088a72104
       template:
       - helmTemplate:
           name: kro
@@ -127,7 +127,10 @@ spec:
                 pod's hostname will be set to a system-defined value.
               type: boolean
             nodeSelector:
-              default: {}
+              properties:
+                kubernetes.io/os:
+                  default: linux
+                  type: string
               type: object
             podAnnotations:
               default: {}
@@ -227,7 +230,7 @@ spec:
               description: The location of the container image repository
               type: string
             tag:
-              default: 0.3.0
+              default: 0.4.1
               description: Overrides the image tag whose default is the chart appVersion.
               type: string
           type: object
@@ -338,4 +341,4 @@ spec:
               type: string
           type: object
       type: object
-  version: 1.0.2
+  version: 1.0.3

@@ -5,7 +5,7 @@ directories:
       name: kro
       repository:
         url: oci://ghcr.io/kro-run/kro
-      version: 0.3.0
+      version: 0.4.1
     path: .
   path: upstream
 kind: Config
