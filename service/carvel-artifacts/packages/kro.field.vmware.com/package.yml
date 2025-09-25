@@ -2,17 +2,17 @@ apiVersion: data.packaging.carvel.dev/v1alpha1
 kind: Package
 metadata:
   creationTimestamp: null
-  name: kro.field.vmware.com.1.0.4
+  name: kro.field.vmware.com.1.0.5
 spec:
   refName: kro.field.vmware.com
-  releasedAt: "2025-09-15T23:02:04Z"
+  releasedAt: "2025-09-25T19:54:44Z"
   template:
     spec:
       deploy:
       - kapp: {}
       fetch:
       - imgpkgBundle:
-          image: ghcr.io/warroyo/kro-supervisor-service@sha256:97862fa6372b1ad670c46253ed6b72fce031b5a4a8cd4e670ab64ff0ccbfa05c
+          image: ghcr.io/warroyo/kro-supervisor-service@sha256:2b9fbcb4ea4fb7257cd3c2a4d1941aa41f6f38787468dc5bc3d4799f4c6959e2
       template:
       - helmTemplate:
           name: kro
@@ -341,4 +341,4 @@ spec:
               type: string
           type: object
       type: object
-  version: 1.0.4
+  version: 1.0.5
