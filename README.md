@@ -8,7 +8,7 @@ This supervisor service can be used to install [KRO](https://kro.run/)
 1. login into VCenter and go to the worload management->services page
 2. add a new service and upload the kro-service.yml
 3. add any additional values that are needed, the entire [helm chart values](https://github.com/kro-run/kro/blob/main/helm/values.yaml) for KRO are supported. 
-4. add the value for `adminGroup` this should map to your vsphere admin group ex. `sso:administrators@vsphere.local`
+4. add the value for `adminGroup` this should map to your vsphere admin group ex. `sso:Administrators@vsphere.local`
 5. install
 
 ## Usage
