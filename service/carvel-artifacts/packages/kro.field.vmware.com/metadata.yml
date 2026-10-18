@@ -1,7 +1,6 @@
 apiVersion: data.packaging.carvel.dev/v1alpha1
 kind: PackageMetadata
 metadata:
-  creationTimestamp: null
   name: kro.field.vmware.com
 spec:
   displayName: kro

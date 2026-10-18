@@ -1,18 +1,17 @@
 apiVersion: data.packaging.carvel.dev/v1alpha1
 kind: Package
 metadata:
-  creationTimestamp: null
-  name: kro.field.vmware.com.1.0.5
+  name: kro.field.vmware.com.1.1.0
 spec:
   refName: kro.field.vmware.com
-  releasedAt: "2025-09-26T14:37:01Z"
+  releasedAt: "2026-10-18T23:20:57Z"
   template:
     spec:
       deploy:
       - kapp: {}
       fetch:
       - imgpkgBundle:
-          image: ghcr.io/warroyo/kro-supervisor-service@sha256:2b9fbcb4ea4fb7257cd3c2a4d1941aa41f6f38787468dc5bc3d4799f4c6959e2
+          image: ghcr.io/warroyo/kro-supervisor-service@sha256:9d1952fbcae341d62fec57b8839f03f91a55e5e8aa87dd50a5d8cd6498848034
       template:
       - helmTemplate:
           name: kro
@@ -33,9 +32,22 @@ spec:
           default: {}
           description: Additional labels that should be applied to all resources
           type: object
-        adminGroup:
-          default: ""
-          type: string
+        admins:
+          description: 'Who may create ResourceGraphDefinitions (ClusterRole kro:admin).
+            Supervisor identities carry the sso: prefix. Nothing is bound when both
+            are empty.'
+          properties:
+            groups:
+              default: []
+              description: vSphere SSO groups, e.g. sso:Administrators@vsphere.local
+              items: {}
+              type: array
+            users:
+              default: []
+              description: vSphere SSO users, e.g. sso:alice@vsphere.local
+              items: {}
+              type: array
+          type: object
         config:
           description: Application configuration settings
           properties:
@@ -52,6 +64,11 @@ spec:
               default: 100
               description: The maximum number of queries per second to allow
               type: integer
+            development:
+              default: false
+              description: Run logger in development mode (stacktraces on warnings,
+                no sampling)
+              type: boolean
             dynamicControllerConcurrentReconciles:
               default: 1
               description: The number of dynamic controller reconciles to run in parallel
@@ -66,25 +83,94 @@ spec:
               description: The interval at which the controller will re list resources
                 even with no changes, in seconds
               type: integer
-            dynamicControllerDefaultShutdownTimeout:
-              default: 60
-              description: The maximum duration to wait for the controller to gracefully
-                shutdown, in seconds
+            dynamicControllerRateLimiterBurstLimit:
+              default: 100
+              description: Burst size allowed through the dynamic controller rate
+                limiter
               type: integer
-            enableLeaderElection:
+            dynamicControllerRateLimiterMaxDelay:
+              default: 1000s
+              description: Maximum retry delay before requeueing a dynamic controller
+                item
+              type: string
+            dynamicControllerRateLimiterMinDelay:
+              default: 200ms
+              description: Minimum retry delay before requeueing a dynamic controller
+                item
+              type: string
+            dynamicControllerRateLimiterRateLimit:
+              default: 10
+              description: Events per second allowed through the dynamic controller
+                rate limiter
+              type: integer
+            enableControllerWarmup:
               default: false
+              description: Enable controller warmup to start controller sources (watches/informers)
+                before leader election is won. This pre-populates caches and improves
+                leader failover time. Requires enableLeaderElection to be true.
+              type: boolean
+            enableLeaderElection:
+              default: true
               description: Enable leader election for controller manager. Enabling
                 this will ensure there is only one active controller manager.
               type: boolean
+            featureGates:
+              default: {}
+              description: 'Feature gates for alpha/experimental features. Each key
+                is a feature gate name, each value is a boolean. Example:   featureGates:     CELOmitFunction:
+                true'
+              type: object
+            gracefulShutdownTimeout:
+              default: 60s
+              description: The maximum duration to wait for the controller manager
+                to gracefully shutdown
+              type: string
+            graphRevisionConcurrentReconciles:
+              default: 1
+              description: The number of graph revision reconciles to run in parallel
+              type: integer
             healthProbeBindAddress:
               default: :8079
               description: The address the probe endpoint binds to
               type: string
+            instance:
+              properties:
+                requeueInterval:
+                  default: 3s
+                  description: The fixed delay between delayed instance requeues while
+                    waiting for cluster state to settle. Set to 0 to disable delayed
+                    requeues.
+                  type: string
+              type: object
+            leaderElectionLeaseDuration:
+              default: 15s
+              description: Duration that non-leader candidates will wait to force
+                acquire leadership.
+              type: string
+            leaderElectionNamespace:
+              default: ""
+              description: Leader election can be scoped to a specific namespace.
+                By default, the controller will attempt to use the namespace of the
+                service account mounted to the Controller pod.
+              type: string
+            leaderElectionRenewDeadline:
+              default: 10s
+              description: Duration the acting leader will retry refreshing leadership
+                before giving up.
+              type: string
+            leaderElectionRetryPeriod:
+              default: 2s
+              description: Duration between each leader election action.
+              type: string
+            logEncoder:
+              default: console
+              description: 'Log encoder format: ''json'' or ''console'''
+              type: string
             logLevel:
-              default: 3
-              description: The log level verbosity. 0 is the least verbose, 5 is the
-                most verbose
-              type: integer
+              default: info
+              description: 'Log level verbosity: ''debug'', ''info'', ''error'', ''panic'',
+                or integer > 0'
+              type: string
             metricsBindAddress:
               default: :8078
               description: The address the metric endpoint binds to
@@ -94,6 +180,67 @@ spec:
               description: The number of resource graph definition reconciles to run
                 in parallel
               type: integer
+            resourceGraphDefinitionProgressRequeueDelay:
+              default: 3s
+              description: Delay before requeueing while an RGD is waiting for asynchronous
+                progress
+              type: string
+            rgd:
+              properties:
+                maxCollectionDimensionSize:
+                  default: 10
+                  description: Maximum size of collection dimension per forEach defined
+                    in ResourceGraphDefinitions
+                  type: integer
+                maxCollectionSize:
+                  default: 1000
+                  description: Maximum size of collections generated by forEach in
+                    ResourceGraphDefinitions
+                  type: integer
+                maxGraphRevisions:
+                  default: 5
+                  description: Maximum number of GraphRevisions to retain per ResourceGraphDefinition
+                  type: integer
+              type: object
+          type: object
+        controllerRules:
+          default: []
+          description: 'Extra RBAC rules for the kro controller. ResourceGraphDefinitions
+            can only manage kinds the controller may touch: list a rule here for every
+            API group and resource your RGDs read (externalRef) or create. They are
+            rendered into a ClusterRole that aggregates into the controller''s role.
+            Example: controllerRules: - apiGroups: ["secretstore.vmware.com"]   resources:
+            ["keyvaluesecrets"]   verbs: ["get", "list", "watch", "create", "update",
+            "patch", "delete"]'
+          items: {}
+          type: array
+        debug:
+          description: 'Debugging configuration settings WARNING: pprof profiling
+            endpoints expose sensitive performance data. Do not use in production
+            environments.'
+          properties:
+            pprof:
+              properties:
+                enabled:
+                  default: false
+                  description: Enable pprof profiling (uses the -debug tagged image)
+                    When using image.ko=true, build with GOFLAGS="-tags=pprof".
+                  type: boolean
+                port:
+                  default: 6060
+                  description: Port for the pprof HTTP server
+                  type: integer
+                service:
+                  description: Create a Service for pprof (useful for port-forwarding)
+                  properties:
+                    enabled:
+                      default: false
+                      type: boolean
+                    type:
+                      default: ClusterIP
+                      type: string
+                  type: object
+              type: object
           type: object
         deployment:
           properties:
@@ -111,6 +258,11 @@ spec:
                 or 'None'. To have DNS options set along with hostNetwork, you have
                 to specify DNS policy explicitly to 'ClusterFirstWithHostNet'.
               type: string
+            extraEnv:
+              default: []
+              description: Additional environment variables for the kro container
+              items: {}
+              type: array
             extraVolumeMounts:
               default: []
               description: Additional volume mount settings for Pods
@@ -127,6 +279,8 @@ spec:
                 pod's hostname will be set to a system-defined value.
               type: boolean
             nodeSelector:
+              description: Chart default is linux; CRX runs the controller as a vSphere
+                Pod.
               properties:
                 kubernetes.io/os:
                   default: CRX
@@ -208,6 +362,10 @@ spec:
               default: []
               items: {}
               type: array
+            topologySpreadConstraints:
+              default: []
+              items: {}
+              type: array
           type: object
         fullnameOverride:
           default: ""
@@ -226,11 +384,11 @@ spec:
                 it is not present locally)'
               type: string
             repository:
-              default: ghcr.io/kro-run/kro/controller
+              default: registry.k8s.io/kro/kro
               description: The location of the container image repository
               type: string
             tag:
-              default: 0.4.1
+              default: v0.9.4
               description: Overrides the image tag whose default is the chart appVersion.
               type: string
           type: object
@@ -239,6 +397,15 @@ spec:
           description: List of secrets for pulling images from a private registry
           items: {}
           type: array
+        metadata:
+          properties:
+            includeHelmChart:
+              default: true
+              type: boolean
+            includeManagedBy:
+              default: true
+              type: boolean
+          type: object
         metrics:
           properties:
             service:
@@ -249,7 +416,7 @@ spec:
                     resource for the Prometheus metrics server endpoint in controller
                   type: boolean
                 port:
-                  default: 8080
+                  default: 8078
                   description: Port for the metrics service
                   type: integer
                 type:
@@ -300,24 +467,23 @@ spec:
           type: object
         nameOverride:
           default: ""
-          description: Override the name of the chart
+          description: Override the name of the chart Supervisor-specific value overrides.
+            Source of truth for supervisor customizations. `make sync` deep-merges
+            this file (these values win) into the upstream chart's values.yaml. Edit
+            this file, never service/upstream/values.yaml.
           type: string
         namespace:
           default: ""
-          description: additional data values for supervisor service
+          description: Set by the Supervisor at install time to the service's namespace
+            (svc-kro-domain-cN). templates/supervisor/ns-overlay.yml moves every chart
+            object into it.
           type: string
         rbac:
           properties:
             mode:
-              default: unrestricted
-              description: 'Specifies how to manage access for kro in the cluster
-                Two modes are currently supported: - unrestricted: Grants cluster-wide
-                full access to all resources - aggregation: Grants a minimal set of
-                permissions for kro to manage its own                resources, and
-                additionally aggregates ClusterRoles with the                label
-                `rbac.kro.run/aggregate-to-controller: "true"` to allow                kro
-                users to extend kro''s permissions. Recommended setting is aggregation,
-                but unrestricted remains the default for backwards compatibility.'
+              default: aggregation
+              description: Chart default is unrestricted (*/* cluster-wide). On a
+                Supervisor the controller gets only what it needs plus controllerRules.
               type: string
           type: object
         serviceAccount:
@@ -341,4 +507,4 @@ spec:
               type: string
           type: object
       type: object
-  version: 1.0.5
+  version: 1.1.0
