@@ -1,0 +1,19 @@
+# vendir internal sync state
+.vendir/
+
+# vendir-managed upstream chart. Only service/supervisor-overrides is committed;
+# `make sync` rebuilds service/upstream from the chart and the overrides.
+service/upstream/
+
+# local render output
+_out/
+
+# macOS
+.DS_Store
+
+# Editors
+*.swp
+*.swo
+.idea/
+.vscode/
+.claude/

@@ -1,0 +1,25 @@
+# Smoke-test RGD: a KroSmoke instance becomes a ConfigMap in its namespace.
+# Exercises the controller, CRD generation, instance reconcile and the
+# aggregated kro.run/* access. Created by a member of admins.
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: krosmokes.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: KroSmoke
+    spec:
+      message: string | default="hello from kro"
+    status:
+      configMapName: ${configmap.metadata.name}
+      message: ${configmap.data.message}
+  resources:
+  - id: configmap
+    template:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: ${schema.metadata.name}-smoke
+      data:
+        message: ${schema.spec.message}

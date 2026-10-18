@@ -1,0 +1,20 @@
+name: setup-tools
+description: Install Helm, the Carvel tools (vendir, ytt, kctrl, kbld, imgpkg) and kubeconform. yq ships on ubuntu-latest.
+
+runs:
+  using: composite
+  steps:
+    - name: Install Helm
+      uses: azure/setup-helm@v4
+
+    - name: Install Carvel tools
+      shell: bash
+      run: curl -sSL https://carvel.dev/install.sh | sudo bash
+
+    - name: Install kubeconform
+      shell: bash
+      env:
+        KUBECONFORM_VERSION: v0.7.0
+      run: |
+        curl -sSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+          | sudo tar xz -C /usr/local/bin kubeconform

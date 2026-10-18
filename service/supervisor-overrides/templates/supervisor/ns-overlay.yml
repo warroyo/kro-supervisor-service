@@ -1,0 +1,22 @@
+#! Helm renders this file with the package values, then kapp-controller's ytt
+#! step applies it to the whole chart output. kapp-controller hands package
+#! values only to the first template step (helmTemplate), so the Supervisor's
+#! namespace value reaches ytt through Helm. package-build.yml renders the
+#! chart into the placeholder namespace "kro"; this overlay replaces it.
+#@ load("@ytt:overlay", "overlay")
+
+#@overlay/match by=overlay.subset({"metadata": {"namespace": "kro"}}), expects="1+"
+---
+metadata:
+  namespace: {{ .Values.namespace }}
+
+#! The controller's ClusterRoleBinding names its ServiceAccount in "kro".
+#! ClusterRoleBindings without a ServiceAccount subject (kro:admin) are left alone.
+#@ def binds_kro_sa(i, left, right):
+#@   return left["kind"] == "ClusterRoleBinding" and len([s for s in left["subjects"] if s["kind"] == "ServiceAccount" and "namespace" in s and s["namespace"] == "kro"]) > 0
+#@ end
+#@overlay/match by=binds_kro_sa, expects="1+"
+---
+subjects:
+#@overlay/match by=overlay.subset({"kind": "ServiceAccount", "namespace": "kro"}), expects="1+"
+- namespace: {{ .Values.namespace }}

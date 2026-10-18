@@ -1,12 +1,13 @@
 apiVersion: vendir.k14s.io/v1alpha1
+kind: Config
 directories:
-- contents:
+- path: upstream
+  contents:
+  # Keep name, repository and version in this order: renovate.json matches them
+  # with a regex to propose chart bumps.
   - helmChart:
       name: kro
       repository:
-        url: oci://ghcr.io/kro-run/kro
-      version: 0.4.1
+        url: oci://registry.k8s.io/kro/charts
+      version: 0.9.4
     path: .
-  path: upstream
-kind: Config
-minimumRequiredVersion: ""

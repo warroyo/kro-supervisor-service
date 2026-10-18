@@ -1,0 +1,43 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "dependencyDashboard": true,
+  "gitIgnoredAuthors": ["41898282+github-actions[bot]@users.noreply.github.com"],
+  "customManagers": [
+    {
+      "description": "Upstream Helm chart from an OCI registry in service/vendir.yml",
+      "customType": "regex",
+      "managerFilePatterns": ["/(^|/)vendir\\.yml$/"],
+      "matchStrings": [
+        "helmChart:\\s+name: (?<depName>\\S+)\\s+repository:\\s+url: oci://(?<registry>\\S+)\\s+version: (?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "docker",
+      "packageNameTemplate": "{{{registry}}}/{{{depName}}}",
+      "versioningTemplate": "semver"
+    },
+    {
+      "description": "Upstream Helm chart from an HTTP Helm repository in service/vendir.yml",
+      "customType": "regex",
+      "managerFilePatterns": ["/(^|/)vendir\\.yml$/"],
+      "matchStrings": [
+        "helmChart:\\s+name: (?<depName>\\S+)\\s+repository:\\s+url: (?<registryUrl>https?://\\S+)\\s+version: (?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "helm",
+      "versioningTemplate": "semver"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Upstream chart bumps: one PR each, completed by the renovate-sync workflow",
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": ["service/vendir.yml"],
+      "addLabels": ["upstream-chart"],
+      "commitMessageTopic": "upstream chart {{depName}}"
+    },
+    {
+      "description": "Keep workflow actions current, grouped into one PR",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions"
+    }
+  ]
+}

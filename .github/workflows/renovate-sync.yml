@@ -1,0 +1,56 @@
+# Completes a Renovate PR that bumps the upstream chart in service/vendir.yml.
+# The hosted Renovate app only edits the version line, so this job runs the
+# sync, checks the render, bumps VERSION and pushes the result to the PR branch.
+# Pushes made with GITHUB_TOKEN start no new workflow runs, so the checks that
+# gate the merge run here, in the same job.
+name: renovate-sync
+
+on:
+  pull_request:
+    paths:
+      - service/vendir.yml
+
+jobs:
+  complete:
+    if: startsWith(github.head_ref, 'renovate/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Install tools
+        uses: ./.github/actions/setup-tools
+
+      - name: Sync upstream chart and overrides
+        run: make sync
+
+      - name: Render and check the package
+        run: make validate
+
+      - name: Bump VERSION
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+        run: |
+          base_version=$(git show "$BASE_REF:VERSION")
+          if [[ $(cat VERSION) != "$base_version" ]]; then
+            echo "VERSION already bumped to $(cat VERSION)"
+            exit 0
+          fi
+          old_chart=$(git show "$BASE_REF:service/vendir.yml" | yq '.directories[0].contents[0].helmChart.version')
+          new_chart=$(make -s chart-version)
+          scripts/next-version.sh "$base_version" "$old_chart" "$new_chart" > VERSION
+          echo "chart $old_chart -> $new_chart, service $base_version -> $(cat VERSION)"
+
+      - name: Push to the PR branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add VERSION service/vendir.lock.yml
+          git diff --staged --quiet && echo "nothing to commit" && exit 0
+          git commit -m "chore: sync upstream chart $(make -s chart-version), release v$(cat VERSION)"
+          git push
