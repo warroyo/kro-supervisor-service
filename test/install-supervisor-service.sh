@@ -141,7 +141,7 @@ if [[ -n "${SERVICE_VALUES:-}" ]]; then
 elif [[ "$INSTALLED" == "200" ]]; then
   # An upgrade must carry the config the service is already running with.
   # Re-deriving it from the repo defaults would silently reset whatever
-  # the operator configured at install time, such as adminGroup and
+  # the operator configured at install time, such as admins and
   # controllerRules.
   vc GET "${TIER2}/${SVC}" \
     | jqp "d.get('yaml_service_config','')" \

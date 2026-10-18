@@ -34,8 +34,10 @@ check "aggregation mode: no wildcard ClusterRole" \
   'select(.kind == "ClusterRole") | .rules[]? | select((.apiGroups[] | test("^\*$")) and (.resources[] | test("^\*$")))' 0
 check "controller aggregates kro instances and controllerRules" \
   'select(.kind == "ClusterRole" and .metadata.labels."rbac.kro.run/aggregate-to-controller" == "true")' 3
-check "kro:admin bound to adminGroup" \
-  'select(.kind == "ClusterRoleBinding" and .metadata.name == "wcp:administrators:kro:admin") | .subjects[] | select(.name == "sso:Administrators@vsphere.local")' 1
+check "kro:admin bound to every admins group" \
+  'select(.kind == "ClusterRoleBinding" and .metadata.name == "wcp:administrators:kro:admin") | .subjects[] | select(.kind == "Group")' 2
+check "kro:admin bound to every admins user" \
+  'select(.kind == "ClusterRoleBinding" and .metadata.name == "wcp:administrators:kro:admin") | .subjects[] | select(.kind == "User" and .name == "sso:alice@vsphere.local")' 1
 check "CRDs for RGDs and GraphRevisions" \
   'select(.kind == "CustomResourceDefinition")' 2
 

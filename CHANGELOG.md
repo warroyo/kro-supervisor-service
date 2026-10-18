@@ -11,7 +11,7 @@ All notable changes to this service are listed here. The format follows [Keep a 
 - Leader election is on by default (upstream change).
 - **Breaking:** the RBAC mode now defaults to `aggregation` (was upstream `unrestricted`, `*/*` cluster-wide). RGDs that read or create kinds other than `kro.run` need rules in the new `controllerRules` value. To keep the old behavior, set `rbac.mode: unrestricted`.
 - The old `aggregate-kro-edit` and `aggregate-kro-view` ClusterRoles are replaced by upstream's `kro-edit` and `kro-view`.
-- The `kro:admin` binding is rendered only when `adminGroup` is set. It now also grants read access to GraphRevisions.
+- `adminGroup` is replaced by `admins.groups` and `admins.users`, so several groups and individual users can get `kro:admin`. The binding is rendered only when one of them is set. `kro:admin` now also grants read access to GraphRevisions.
 - The upstream chart is no longer committed. `make sync` fetches it and applies `service/supervisor-overrides`.
 
 ### Added

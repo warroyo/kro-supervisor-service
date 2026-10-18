@@ -6,9 +6,13 @@
 # templates/supervisor/ns-overlay.yml moves every chart object into it.
 namespace: ""
 
-# vSphere SSO group whose members may create ResourceGraphDefinitions,
-# e.g. sso:Administrators@vsphere.local. Nothing is bound when empty.
-adminGroup: ""
+# Who may create ResourceGraphDefinitions (ClusterRole kro:admin).
+# Supervisor identities carry the sso: prefix. Nothing is bound when both are empty.
+admins:
+  # vSphere SSO groups, e.g. sso:Administrators@vsphere.local
+  groups: []
+  # vSphere SSO users, e.g. sso:alice@vsphere.local
+  users: []
 
 # Extra RBAC rules for the kro controller. ResourceGraphDefinitions can only
 # manage kinds the controller may touch: list a rule here for every API group

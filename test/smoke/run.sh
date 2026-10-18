@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Smoke test against a Supervisor with the service installed.
 #   test/smoke/run.sh <supervisor-namespace>
-# Needs a kubectl context on the Supervisor as an adminGroup member.
+# Needs a kubectl context on the Supervisor as a member of admins (a listed user or group).
 set -euo pipefail
 ns=${1:?usage: run.sh <supervisor-namespace>}
 dir=$(cd "$(dirname "$0")" && pwd)

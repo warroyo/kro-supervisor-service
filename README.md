@@ -18,7 +18,11 @@ The service version is independent of the chart version. A fix to the Supervisor
 Example values:
 
 ```yaml
-adminGroup: sso:Administrators@vsphere.local
+admins:
+  groups:
+  - sso:Administrators@vsphere.local
+  users:
+  - sso:alice@vsphere.local
 controllerRules:
 - apiGroups: ["secretstore.vmware.com"]
   resources: ["keyvaluesecrets"]
@@ -40,7 +44,8 @@ You can set any [upstream chart value](https://github.com/kubernetes-sigs/kro/bl
 | Value | Default | Purpose |
 |---|---|---|
 | `namespace` | set by the Supervisor | The service namespace (`svc-kro-domain-cN`). Do not set it. |
-| `adminGroup` | `""` | vSphere SSO group, for example `sso:Administrators@vsphere.local`. Members get ClusterRole `kro:admin`: manage ResourceGraphDefinitions and read GraphRevisions. Nothing is bound when empty. |
+| `admins.groups` | `[]` | vSphere SSO groups, for example `sso:Administrators@vsphere.local`. Members get ClusterRole `kro:admin`: manage ResourceGraphDefinitions and read GraphRevisions. |
+| `admins.users` | `[]` | vSphere SSO users, for example `sso:alice@vsphere.local`, who get `kro:admin`. Nothing is bound when both lists are empty. |
 | `controllerRules` | `[]` | Extra RBAC rules for the kro controller. Rendered into ClusterRole `kro:controller:supervisor`, labeled `rbac.kro.run/aggregate-to-controller`. |
 
 The service changes two upstream defaults:
@@ -64,7 +69,7 @@ To restore the upstream behavior, set `rbac.mode: unrestricted`. This gives the 
 
 ### Admins and namespace users
 
-Members of `adminGroup` can create and manage RGDs. Namespace users get `kro.run` access through upstream's `kro-edit` and `kro-view` ClusterRoles, which aggregate into the standard `admin`, `edit` and `view` roles.
+Only the users and groups in `admins` can create and manage RGDs. RGDs are cluster-scoped, so namespace roles never grant them. Namespace users get `kro.run` access through upstream's `kro-edit` and `kro-view` ClusterRoles, which aggregate into the standard `admin`, `edit` and `view` roles.
 
 ## Updating
 
@@ -119,7 +124,7 @@ make validate   # render, then kubeconform and test/check-rendered.sh
 - the controller pods use the `CRX` node selector
 - no ClusterRole grants `*` on `*` in aggregation mode
 - the controller aggregation ClusterRoles are present (upstream `kro:controller:static`, `kro:controller:instances`, and `controllerRules`)
-- `kro:admin` is bound to `adminGroup`
+- `kro:admin` is bound to every group and user in `admins`
 - the RGD and GraphRevision CRDs are present
 
 ### Testing on a Supervisor
@@ -132,7 +137,7 @@ make install-supervisor-service
 make smoke-test NAMESPACE=<supervisor-namespace>
 ```
 
-`make smoke-test` needs a kubectl context on the Supervisor as an `adminGroup` member. It creates the `KroSmoke` RGD in `test/smoke/`, creates an instance in the namespace, checks that the instance becomes a ConfigMap, then deletes both.
+`make smoke-test` needs a kubectl context on the Supervisor as a user in `admins` or in one of its groups. It creates the `KroSmoke` RGD in `test/smoke/`, creates an instance in the namespace, checks that the instance becomes a ConfigMap, then deletes both.
 
 ### Manual release
 
