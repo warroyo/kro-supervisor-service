@@ -1,0 +1,32 @@
+# Supervisor-specific value overrides. Source of truth for supervisor customizations.
+# `make sync` deep-merges this file (these values win) into the upstream chart's
+# values.yaml. Edit this file, never service/upstream/values.yaml.
+
+# Set by the Supervisor at install time to the service's namespace (svc-kro-domain-cN).
+# templates/supervisor/ns-overlay.yml moves every chart object into it.
+namespace: ""
+
+# vSphere SSO group whose members may create ResourceGraphDefinitions,
+# e.g. sso:Administrators@vsphere.local. Nothing is bound when empty.
+adminGroup: ""
+
+# Extra RBAC rules for the kro controller. ResourceGraphDefinitions can only
+# manage kinds the controller may touch: list a rule here for every API group
+# and resource your RGDs read (externalRef) or create. They are rendered into a
+# ClusterRole that aggregates into the controller's role.
+# Example:
+# controllerRules:
+# - apiGroups: ["secretstore.vmware.com"]
+#   resources: ["keyvaluesecrets"]
+#   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+controllerRules: []
+
+rbac:
+  # Chart default is unrestricted (*/* cluster-wide). On a Supervisor the
+  # controller gets only what it needs plus controllerRules.
+  mode: aggregation
+
+deployment:
+  # Chart default is linux; CRX runs the controller as a vSphere Pod.
+  nodeSelector:
+    kubernetes.io/os: CRX

@@ -1,0 +1,44 @@
+{{- if eq .Values.rbac.mode "aggregation" }}
+# In aggregation mode the chart grants the controller only RGDs, GraphRevisions
+# and CRDs. On a Supervisor only vSphere admins can add ClusterRoles, so the
+# service ships what every install needs plus the admin's controllerRules.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    kubernetes.io/description: |
+      Lets the kro controller manage the instances of every ResourceGraphDefinition
+      (group kro.run unless an RGD sets its own group).
+  name: {{ include "kro.fullname" . }}:controller:instances
+  labels:
+    {{- include "kro.labels" . | nindent 4 }}
+    rbac.kro.run/aggregate-to-controller: "true"
+rules:
+- apiGroups:
+  - kro.run
+  resources:
+  - "*"
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+{{- with .Values.controllerRules }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    kubernetes.io/description: |
+      Extra access for the kro controller, from the service's controllerRules value.
+  name: {{ include "kro.fullname" $ }}:controller:supervisor
+  labels:
+    {{- include "kro.labels" $ | nindent 4 }}
+    rbac.kro.run/aggregate-to-controller: "true"
+rules:
+{{- toYaml . | nindent 0 }}
+{{- end }}
+{{- end }}

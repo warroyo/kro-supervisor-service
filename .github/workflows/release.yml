@@ -1,0 +1,77 @@
+name: release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - VERSION
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Get versions
+        id: version
+        run: |
+          echo "version=$(make -s version)" >> "$GITHUB_OUTPUT"
+          echo "chart_version=$(make -s chart-version)" >> "$GITHUB_OUTPUT"
+
+      - name: Stop if the tag exists
+        id: tag
+        run: |
+          git fetch --tags --quiet
+          if git rev-parse -q --verify "refs/tags/v${{ steps.version.outputs.version }}" >/dev/null; then
+            echo "v${{ steps.version.outputs.version }} is already released; bump VERSION to release again"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install tools
+        if: steps.tag.outputs.exists != 'true'
+        uses: ./.github/actions/setup-tools
+
+      - name: Login to GitHub Container Registry
+        if: steps.tag.outputs.exists != 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync, check and release the package
+        if: steps.tag.outputs.exists != 'true'
+        run: |
+          make sync
+          make validate
+          make release
+
+      - name: Commit artifacts and tag
+        if: steps.tag.outputs.exists != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add service/vendir.lock.yml service/carvel-artifacts/ kro-service.yml
+          git diff --staged --quiet || git commit -m "chore: release v${{ steps.version.outputs.version }} [skip ci]"
+          git push
+          git tag "v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
+
+      - name: Create GitHub Release
+        if: steps.tag.outputs.exists != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          body: |
+            **Upstream chart:** kro `${{ steps.version.outputs.chart_version }}`
+
+            Register `kro-service.yml` in vCenter under Workload Management > Services.
+          files: kro-service.yml
+          generate_release_notes: true
