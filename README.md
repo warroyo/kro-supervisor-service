@@ -122,6 +122,18 @@ make validate   # render, then kubeconform and test/check-rendered.sh
 - `kro:admin` is bound to `adminGroup`
 - the RGD and GraphRevision CRDs are present
 
+### Testing on a Supervisor
+
+`make install-supervisor-service` registers `kro-service.yml` in vCenter and installs or upgrades it on the Supervisor through the vCenter API. A first install uses `test/values-supervisor.yaml` (minus `namespace`). An upgrade keeps the values already installed. Set `SERVICE_VALUES` to use another file.
+
+```bash
+export VC_HOST=vc01.example.lab VC_USER=administrator@vsphere.local VC_PASSWORD_FILE=/path/to/pw
+make install-supervisor-service
+make smoke-test NAMESPACE=<supervisor-namespace>
+```
+
+`make smoke-test` needs a kubectl context on the Supervisor as an `adminGroup` member. It creates the `KroSmoke` RGD in `test/smoke/`, creates an instance in the namespace, checks that the instance becomes a ConfigMap, then deletes both.
+
 ### Manual release
 
 CI normally does this. To release by hand, log in to ghcr and run `make release`:
