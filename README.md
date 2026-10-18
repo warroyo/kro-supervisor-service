@@ -153,7 +153,9 @@ The fix has two parts. Helm renders the chart into a placeholder namespace, `kro
 │   └── next-version.sh              # computes the service version after a chart bump
 ├── test/
 │   ├── values-supervisor.yaml       # values used by make render
-│   └── check-rendered.sh            # assertions on the rendered package
+│   ├── check-rendered.sh            # assertions on the rendered package
+│   ├── install-supervisor-service.sh # register + install through the vCenter API
+│   └── smoke/                       # KroSmoke RGD round trip on a live Supervisor
 ├── .github/
 │   ├── actions/setup-tools/         # installs helm, Carvel tools, kubeconform
 │   └── workflows/                   # validate, renovate-sync, release

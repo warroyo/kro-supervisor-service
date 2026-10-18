@@ -1,0 +1,7 @@
+# Created in a Supervisor Namespace by a namespace user.
+apiVersion: kro.run/v1alpha1
+kind: KroSmoke
+metadata:
+  name: smoke
+spec:
+  message: kro supervisor service works

@@ -4,10 +4,6 @@ All notable changes to this service are listed here. The format follows [Keep a 
 
 ## [1.1.0] - Unreleased
 
-### Upgrading from 1.0.x
-
-kro 0.4.1 to 0.9.4 spans many upstream releases. Before you upgrade, review your existing RGDs against the [kro 0.9 docs](https://kro.run/docs). Add `controllerRules` for every kind your RGDs use. See the RBAC change below.
-
 ### Changed
 
 - Upstream kro moves from 0.4.1 to 0.9.4.

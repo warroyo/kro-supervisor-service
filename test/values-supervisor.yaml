@@ -1,7 +1,14 @@
-# Values for `make render`: what a Supervisor install passes to the package.
+# Values for `make render`, and the default values for a first
+# `make install-supervisor-service` (minus namespace, which the Supervisor sets).
 namespace: svc-kro-domain-c10
 adminGroup: sso:Administrators@vsphere.local
 controllerRules:
 - apiGroups: ["secretstore.vmware.com"]
   resources: ["keyvaluesecrets"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["databases.dataservices.vmware.com"]
+  resources: ["postgresclusters"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["vmoperator.vmware.com"]
+  resources: ["virtualmachineservices"]
+  verbs: ["get", "list", "watch"]

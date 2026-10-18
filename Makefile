@@ -2,7 +2,7 @@ VERSION ?= $(shell cat VERSION)
 PACKAGE := kro.field.vmware.com
 OUT := _out
 
-.PHONY: version chart-version sync render validate release
+.PHONY: version chart-version sync render validate release install-supervisor-service smoke-test
 
 version:
 	@echo $(VERSION)
@@ -38,3 +38,12 @@ release:
 	cp service/carvel-artifacts/packages/$(PACKAGE)/metadata.yml kro-service.yml
 	echo "---" >> kro-service.yml
 	cat service/carvel-artifacts/packages/$(PACKAGE)/package.yml >> kro-service.yml
+
+# Register and install (or upgrade) kro-service.yml on a Supervisor through the
+# vCenter API. Needs VC_HOST, VC_USER and VC_PASSWORD_FILE (or VC_PASSWORD).
+install-supervisor-service:
+	./test/install-supervisor-service.sh
+
+# RGD plus instance round trip on a live Supervisor. NAMESPACE is a Supervisor Namespace.
+smoke-test:
+	./test/smoke/run.sh $(NAMESPACE)
