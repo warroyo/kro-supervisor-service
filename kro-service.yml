@@ -10,17 +10,17 @@ spec:
 apiVersion: data.packaging.carvel.dev/v1alpha1
 kind: Package
 metadata:
-  name: kro.field.vmware.com.1.1.0
+  name: kro.field.vmware.com.1.2.0
 spec:
   refName: kro.field.vmware.com
-  releasedAt: "2026-10-18T23:20:57Z"
+  releasedAt: "2026-10-20T01:27:44Z"
   template:
     spec:
       deploy:
       - kapp: {}
       fetch:
       - imgpkgBundle:
-          image: ghcr.io/warroyo/kro-supervisor-service@sha256:9d1952fbcae341d62fec57b8839f03f91a55e5e8aa87dd50a5d8cd6498848034
+          image: ghcr.io/warroyo/kro-supervisor-service@sha256:9f2a1452221c7f862ff03ba3bcd441e71baec30205d822543cd8cd3224626071
       template:
       - helmTemplate:
           name: kro
@@ -214,11 +214,12 @@ spec:
           type: object
         controllerRules:
           default: []
-          description: 'Extra RBAC rules for the kro controller. ResourceGraphDefinitions
-            can only manage kinds the controller may touch: list a rule here for every
-            API group and resource your RGDs read (externalRef) or create. They are
-            rendered into a ClusterRole that aggregates into the controller''s role.
-            Example: controllerRules: - apiGroups: ["secretstore.vmware.com"]   resources:
+          description: 'Extra RBAC rules for the kro controller, on top of the defaults.
+            ResourceGraphDefinitions can only manage kinds the controller may touch:
+            list a rule here for every other API group and resource your RGDs read
+            (externalRef) or create. With multitenancy on, list namespaced kinds only.
+            They are rendered into a ClusterRole that aggregates into the controller''s
+            role. Example: controllerRules: - apiGroups: ["secretstore.vmware.com"]   resources:
             ["keyvaluesecrets"]   verbs: ["get", "list", "watch", "create", "update",
             "patch", "delete"]'
           items: {}
@@ -251,6 +252,12 @@ spec:
                   type: object
               type: object
           type: object
+        defaultControllerRules:
+          default: true
+          description: 'Ship ClusterRole kro:controller:defaults: the namespaced kinds
+            RGDs commonly use on a Supervisor (workloads, config, networking, VMs,
+            VKS clusters, DSM databases, Secret Store). See templates/supervisor/controller-defaults.yml.'
+          type: boolean
         deployment:
           properties:
             affinity:
@@ -474,6 +481,36 @@ spec:
                   type: string
               type: object
           type: object
+        multitenancy:
+          description: Lets platform teams in VCF Automation organizations author
+            their own ResourceGraphDefinitions without being Supervisor admins. See
+            docs/authoring-modes.md, and scripts/multitenancy-values.sh to print these
+            values for a project.
+          properties:
+            enabled:
+              default: false
+              type: boolean
+            oidcClientId:
+              default: ""
+              description: Client ID of the OIDC identity provider VCF Automation
+                registered on this Supervisor. It is the end of every group VCF Automation
+                sends, the same for all organizations. vCenter shows it under the
+                Supervisor's identity providers; `kubectl auth whoami` shows it after
+                the @ of the edit- group.
+              type: string
+            orgs:
+              default: []
+              description: 'The VCF Automation organizations allowed to author RGDs.
+                Each gets its own API group, <name>.kro.run: tenant RGDs set spec.schema.group
+                to it, and its instances can only be created in that organization''s
+                namespaces. id is the UUID in the organization''s URN (urn:vcloud:org:<id>).
+                authorProjects are the projects whose editors and admins author RGDs:
+                name and id (the Project''s metadata.uid). Any project can be one.
+                Example: orgs: - name: goad   id: 6b1d3f8a-2c4e-4a7b-8d9f-0e5c7a1b3d2f   authorProjects:   -
+                name: kro-authors     id: 9a7e5c3b-1d2f-4e6a-8b0c-4f3d2e1a0b9c'
+              items: {}
+              type: array
+          type: object
         nameOverride:
           default: ""
           description: Override the name of the chart Supervisor-specific value overrides.
@@ -484,7 +521,7 @@ spec:
         namespace:
           default: ""
           description: Set by the Supervisor at install time to the service's namespace
-            (svc-kro-domain-cN). templates/supervisor/ns-overlay.yml moves every chart
+            (svc-kro-<random>). templates/supervisor/ns-overlay.yml moves every chart
             object into it.
           type: string
         rbac:
@@ -516,4 +553,4 @@ spec:
               type: string
           type: object
       type: object
-  version: 1.1.0
+  version: 1.2.0
