@@ -74,6 +74,12 @@ spec:
     expression: 'oldObject != null && has(oldObject.spec.schema.group) ? oldObject.spec.schema.group : "kro.run"'
   - name: resources
     expression: 'object != null && has(object.spec.resources) ? object.spec.resources : []'
+  # The one metadata.namespace a tenant template or externalRef may set: the
+  # instance's own namespace, which is also kro's default. Admission sees the
+  # RGD before kro evaluates it, so the check is on this exact text. Any other
+  # expression or literal could name another namespace.
+  - name: instanceNamespace
+    expression: '"${schema.metadata.namespace}"'
   # API groups a tenant RGD may not create or read: kro itself, CRDs, RBAC and
   # admission. Templates there would run as the kro controller and escape these
   # rules. Instances of other kro.run kinds stay allowed.
@@ -114,17 +120,21 @@ spec:
       GraphRevisions, CRDs, RBAC or admission objects.
   - expression: >-
       variables.isAdmin || variables.resources.all(r,
-      !has(r.template) || !has(r.template.metadata) || !has(r.template.metadata.namespace))
+      !has(r.template) || !has(r.template.metadata) || !has(r.template.metadata.namespace) ||
+      r.template.metadata.namespace == variables.instanceNamespace)
     message: >-
-      Resource templates may not set metadata.namespace. Tenant resources are created in
-      the instance's namespace.
+      Resource templates may not set metadata.namespace, except to ${schema.metadata.namespace}.
+      Tenant resources are created in the instance's namespace.
   - expression: >-
       variables.isAdmin || variables.resources.all(r,
       !has(r.externalRef) || (has(r.externalRef.metadata.name) &&
-      !has(r.externalRef.metadata.namespace) && !has(r.externalRef.metadata.selector)))
+      (!has(r.externalRef.metadata.namespace) ||
+      r.externalRef.metadata.namespace == variables.instanceNamespace) &&
+      !has(r.externalRef.metadata.selector)))
     message: >-
       externalRef must name one object in the instance's namespace: set metadata.name,
-      and not metadata.namespace or metadata.selector.
+      not metadata.selector, and leave out metadata.namespace or set it to
+      ${schema.metadata.namespace}.
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

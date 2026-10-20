@@ -1,0 +1,24 @@
+# A template may not take its namespace from a field the instance sets.
+# expect: may not set metadata.namespace
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: mt-deny-template-ns-field
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: MtDeny
+    group: __ORG__.kro.run
+    spec:
+      message: string | default="hello"
+      targetNamespace: string | default="kube-system"
+  resources:
+  - id: configmap
+    template:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: ${schema.metadata.name}-note
+        namespace: ${schema.spec.targetNamespace}
+      data:
+        message: ${schema.spec.message}

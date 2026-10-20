@@ -148,9 +148,11 @@ The kro controller is exempt only when it updates or deletes an RGD (finalizers,
 |---|---|
 | `spec.schema.group` is the organization's group | `Set spec.schema.group: goad.kro.run (your organization's API group).` |
 | `spec.schema.scope` is `Namespaced` | `Tenant ResourceGraphDefinitions must create Namespaced instances (spec.schema.scope).` |
-| Templates don't set `metadata.namespace` | `Resource templates may not set metadata.namespace. ...` |
-| `externalRef` sets `metadata.name`, and not `metadata.namespace` or `metadata.selector` | `externalRef must name one object in the instance's namespace: ...` |
+| Templates don't set `metadata.namespace`, or set it to exactly `${schema.metadata.namespace}` | `Resource templates may not set metadata.namespace, except to ${schema.metadata.namespace}. ...` |
+| `externalRef` sets `metadata.name`, not `metadata.selector`, and either no `metadata.namespace` or exactly `${schema.metadata.namespace}` | `externalRef must name one object in the instance's namespace: ...` |
 | Templates and references don't use RGDs, `internal.kro.run`, CRDs, RBAC or admission objects | `Tenant ResourceGraphDefinitions may not create or reference ...` |
+
+`${schema.metadata.namespace}` is allowed so RGDs written in the common upstream style work unchanged. It names the instance's namespace, which kro uses anyway when the field is left out. The policy sees the RGD before kro evaluates it, so it compares the text: any other expression, such as `${schema.spec.namespace}`, or a literal namespace is refused, because it could name another organization's namespace.
 
 kro can only create kinds its controller may touch: the service's default set (`defaultControllerRules`, all namespaced; see the README) plus anything the admin adds in `controllerRules`. Those permissions are one list for every organization and every namespace. Kubernetes RBAC can't say "only in goad's namespaces", so the content rules do that job: a tenant template has no namespace, and kro creates everything in the instance's namespace, which the instance's creator can already edit. That only works for namespaced kinds. In multitenancy mode, add only namespaced kinds to `controllerRules`; a cluster-scoped kind (Namespace, StorageClass, ClusterRole) would be created cluster-wide.
 
