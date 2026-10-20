@@ -142,7 +142,7 @@ done
 if [[ $got == "kro multitenancy works" ]]; then
   ok "instance reconciled into ConfigMap mt-live-note"
 else
-  fail "ConfigMap mt-live-note has message '$got': $(kubectl --context "$KRO_ORG_USER_CONTEXT" get -n "$ORG_NS" mtnote mt-live -o jsonpath='{.status}' 2>&1)"
+  fail "ConfigMap mt-live-note has message '$got': $(kubectl --context "$KRO_ORG_USER_CONTEXT" get -n "$ORG_NS" "mtnotes.$KRO_ORG.kro.run" mt-live -o jsonpath='{.status}' 2>&1)"
 fi
 
 if [[ -n $KRO_OTHER_ORG_CONTEXT ]]; then
@@ -181,7 +181,7 @@ check allow "admin deletes mt-admin-notes" - "$KRO_ADMIN_CONTEXT" \
 
 echo "== author cleans up"
 check allow "delete the instance" - "$KRO_ORG_USER_CONTEXT" \
-  delete -n "$ORG_NS" mtnote mt-live --wait=true --timeout=120s
+  delete -n "$ORG_NS" "mtnotes.$KRO_ORG.kro.run" mt-live --wait=true --timeout=120s
 check allow "author deletes own RGD" - "$KRO_AUTHOR_CONTEXT" \
   delete rgd mt-notes --wait=true --timeout=120s
 if kubectl --context "$KRO_ADMIN_CONTEXT" get rgd mt-notes >/dev/null 2>&1; then
