@@ -1,0 +1,29 @@
+# A template may not create an RGD, which would skip these rules.
+# expect: may not create or reference ResourceGraphDefinitions, GraphRevisions, CRDs, RBAC or admission objects
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: mt-deny-rgd
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: MtDeny
+    group: __ORG__.kro.run
+    spec:
+      message: string | default="hello"
+  resources:
+  - id: configmap
+    template:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: ${schema.metadata.name}-note
+      data:
+        message: ${schema.spec.message}
+  - id: inner
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: ResourceGraphDefinition
+      metadata:
+        name: ${schema.metadata.name}-inner
+      spec: {}

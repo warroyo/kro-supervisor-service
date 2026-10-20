@@ -1,0 +1,23 @@
+# A template may not pick its namespace.
+# expect: may not set metadata.namespace
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: mt-deny-template-ns
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: MtDeny
+    group: __ORG__.kro.run
+    spec:
+      message: string | default="hello"
+  resources:
+  - id: configmap
+    template:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: ${schema.metadata.name}-note
+        namespace: kube-system
+      data:
+        message: ${schema.spec.message}

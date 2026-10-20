@@ -32,8 +32,12 @@ check "controller pods run as vSphere Pods (CRX)" \
   'select(.kind == "Deployment") | select(.spec.template.spec.nodeSelector."kubernetes.io/os" == "CRX")' 1
 check "aggregation mode: no wildcard ClusterRole" \
   'select(.kind == "ClusterRole") | .rules[]? | select((.apiGroups[] | test("^\*$")) and (.resources[] | test("^\*$")))' 0
-check "controller aggregates kro instances and controllerRules" \
-  'select(.kind == "ClusterRole" and .metadata.labels."rbac.kro.run/aggregate-to-controller" == "true")' 3
+check "controller aggregates kro instances, defaults and controllerRules" \
+  'select(.kind == "ClusterRole" and .metadata.labels."rbac.kro.run/aggregate-to-controller" == "true")' 4
+check "default controller kinds are all listed by name, no wildcards" \
+  'select(.kind == "ClusterRole" and .metadata.name == "kro:controller:defaults") | .rules[] | select((.resources[] | test("\\*")) or (.verbs[] | test("\\*")))' 0
+check "default controller kinds include no RBAC, namespaces or other cluster-scoped kinds" \
+  'select(.kind == "ClusterRole" and .metadata.name == "kro:controller:defaults") | .rules[] | select((.apiGroups[] == "rbac.authorization.k8s.io") or (.resources[] | test("^(namespaces|nodes|persistentvolumes|storageclasses|resourcequotas|limitranges)$")))' 0
 check "kro:admin bound to every admins group" \
   'select(.kind == "ClusterRoleBinding" and .metadata.name == "wcp:administrators:kro:admin") | .subjects[] | select(.kind == "Group")' 2
 check "kro:admin bound to every admins user" \

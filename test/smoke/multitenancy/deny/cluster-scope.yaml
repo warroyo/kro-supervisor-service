@@ -1,0 +1,23 @@
+# Cluster-scoped instances would escape the organization's namespaces.
+# expect: must create Namespaced instances
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: mt-deny-cluster
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: MtDeny
+    group: __ORG__.kro.run
+    scope: Cluster
+    spec:
+      message: string | default="hello"
+  resources:
+  - id: configmap
+    template:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: ${schema.metadata.name}-note
+      data:
+        message: ${schema.spec.message}

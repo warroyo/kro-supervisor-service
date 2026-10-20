@@ -1,0 +1,23 @@
+# Example values for a live multitenancy test. Print the multitenancy block for
+# your projects with scripts/multitenancy-values.sh, set your admins, and pass
+# the file to `make install-supervisor-service`:
+#
+#   SERVICE_YAML=_out/kro-service.yml SERVICE_VALUES=my-values.yaml make install-supervisor-service
+admins:
+  groups:
+  - sso:Administrators@vsphere.local
+controllerRules: []
+multitenancy:
+  enabled: true
+  oidcClientId: 00000000-0000-4000-8000-0000000000aa
+  orgs:
+  - name: acme
+    id: 00000000-0000-4000-8000-000000000001
+    authorProjects:
+    - name: kro-authors
+      id: 00000000-0000-4000-8000-0000000000a1
+  - name: goad
+    id: 00000000-0000-4000-8000-000000000002
+    authorProjects:
+    - name: kro-authors
+      id: 00000000-0000-4000-8000-0000000000b1

@@ -1,0 +1,21 @@
+# No group: kro defaults to kro.run, which belongs to the admins.
+# expect: Set spec.schema.group: __ORG__.kro.run
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: mt-deny-no-group
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: MtDeny
+    spec:
+      message: string | default="hello"
+  resources:
+  - id: configmap
+    template:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: ${schema.metadata.name}-note
+      data:
+        message: ${schema.spec.message}

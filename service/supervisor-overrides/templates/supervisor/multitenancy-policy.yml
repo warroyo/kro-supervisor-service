@@ -1,0 +1,187 @@
+{{- if .Values.multitenancy.enabled }}
+{{- $orgs := dict }}
+{{- $orgIds := dict }}
+{{- $authorGroups := dict }}
+{{- range .Values.multitenancy.orgs }}
+{{- $_ := set $orgs (.id | toString) (.name | toString) }}
+{{- $_ := set $orgIds (.name | toString) (.id | toString) }}
+{{- $org := .name | toString }}
+{{- range .authorProjects }}
+{{- $_ := set $authorGroups (include "kro.authorGroup" (dict "project" . "root" $)) $org }}
+{{- end }}
+{{- end }}
+# Who may write ResourceGraphDefinitions, and what a tenant RGD may contain.
+#
+# VCF Automation users reach the Supervisor through its proxy. Their requests
+# carry the organization in the extra field vcf.vmware.com/org_id and the
+# project of the namespace context as a group edit-<project uid>-<name>@<client>.net.
+# vSphere users and ServiceAccounts carry no org_id. RBAC (kro:tenant-author)
+# already limits RGD writes to admins and the author project groups; the author
+# checks below repeat it, so a widened binding alone lets no one in.
+#
+# Each organization in multitenancy.orgs has its own API group, <name>.kro.run,
+# and a tenant RGD must use it (spec.schema.group: goad.kro.run). The group
+# records the owner: only authors from that organization may change or delete
+# the RGD. Kind names never collide between organizations, and no organization
+# can take over another's CRD and instances, which kro keeps after an RGD is
+# deleted and adopts only for the same kind and group.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: kro-multitenancy
+  annotations:
+    kapp.k14s.io/change-group: {{ include "kro.multitenancyPolicyChangeGroup" . | quote }}
+  labels:
+    {{- include "kro.labels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: ["kro.run"]
+      apiVersions: ["*"]
+      operations: ["CREATE", "UPDATE", "DELETE"]
+      resources: ["resourcegraphdefinitions"]
+  matchConditions:
+  # The kro controller adds finalizers and labels to every RGD and removes the
+  # finalizer on delete. It never needs to create one: a create from it means an
+  # RGD template tried to make an RGD, and goes through the rules below.
+  - name: not-kro-controller-maintenance
+    expression: >-
+      !(request.userInfo.username == "system:serviceaccount:{{ .Values.namespace }}:{{ include "kro.serviceAccountName" . }}" &&
+      request.operation in ["UPDATE", "DELETE"])
+  variables:
+  - name: isAdmin
+    expression: >-
+      request.userInfo.username in {{ .Values.admins.users | default list | toJson }} ||
+      request.userInfo.groups.exists(g, g in {{ .Values.admins.groups | default list | toJson }})
+  - name: orgId
+    expression: >-
+      has(request.userInfo.extra) && "vcf.vmware.com/org_id" in request.userInfo.extra &&
+      size(request.userInfo.extra["vcf.vmware.com/org_id"]) > 0
+      ? request.userInfo.extra["vcf.vmware.com/org_id"][0] : ""
+  - name: orgs
+    expression: '{{ $orgs | toJson }}'
+  - name: orgName
+    expression: 'variables.orgId in variables.orgs ? variables.orgs[variables.orgId] : ""'
+  # Author project group -> organization name.
+  - name: authorGroups
+    expression: '{{ $authorGroups | toJson }}'
+  - name: tenantGroup
+    expression: 'variables.orgName != "" ? variables.orgName + ".kro.run" : ""'
+  - name: newGroup
+    expression: 'object != null && has(object.spec.schema.group) ? object.spec.schema.group : "kro.run"'
+  - name: oldGroup
+    expression: 'oldObject != null && has(oldObject.spec.schema.group) ? oldObject.spec.schema.group : "kro.run"'
+  - name: resources
+    expression: 'object != null && has(object.spec.resources) ? object.spec.resources : []'
+  # API groups a tenant RGD may not create or read: kro itself, CRDs, RBAC and
+  # admission. Templates there would run as the kro controller and escape these
+  # rules. Instances of other kro.run kinds stay allowed.
+  - name: forbiddenGroups
+    expression: '["internal.kro.run", "apiextensions.k8s.io", "rbac.authorization.k8s.io", "admissionregistration.k8s.io"]'
+  - name: refs
+    expression: >-
+      variables.resources.filter(r, has(r.template) || has(r.externalRef)).map(r,
+      has(r.template) ? r.template : r.externalRef)
+  validations:
+  - expression: variables.isAdmin || variables.orgId != ""
+    message: Only kro admins and authors in a VCF Automation organization may change ResourceGraphDefinitions.
+  - expression: variables.isAdmin || variables.orgName != ""
+    messageExpression: >-
+      "VCF Automation organization " + variables.orgId +
+      " is not enabled for kro authoring. Ask the Supervisor admin to add it to multitenancy.orgs."
+  - expression: >-
+      variables.isAdmin ||
+      request.userInfo.groups.exists(g, g in variables.authorGroups && variables.authorGroups[g] == variables.orgName)
+    message: >-
+      Author ResourceGraphDefinitions from a namespace context in one of your organization's
+      kro author projects (multitenancy.orgs[].authorProjects), with the edit or admin role.
+  - expression: variables.isAdmin || request.operation == "CREATE" || variables.oldGroup == variables.tenantGroup
+    message: This ResourceGraphDefinition belongs to another organization or to the kro admins.
+  - expression: variables.isAdmin || request.operation == "DELETE" || variables.newGroup == variables.tenantGroup
+    messageExpression: '"Set spec.schema.group: " + variables.tenantGroup + " (your organization''s API group)."'
+  - expression: >-
+      variables.isAdmin || request.operation == "DELETE" ||
+      !has(object.spec.schema.scope) || object.spec.schema.scope == "Namespaced"
+    message: Tenant ResourceGraphDefinitions must create Namespaced instances (spec.schema.scope).
+  - expression: >-
+      variables.isAdmin || variables.refs.all(t,
+      !has(t.apiVersion) || !(
+        string(t.apiVersion).split("/")[0] in variables.forbiddenGroups ||
+        (string(t.apiVersion).startsWith("kro.run/") && has(t.kind) && t.kind == "ResourceGraphDefinition")))
+    message: >-
+      Tenant ResourceGraphDefinitions may not create or reference ResourceGraphDefinitions,
+      GraphRevisions, CRDs, RBAC or admission objects.
+  - expression: >-
+      variables.isAdmin || variables.resources.all(r,
+      !has(r.template) || !has(r.template.metadata) || !has(r.template.metadata.namespace))
+    message: >-
+      Resource templates may not set metadata.namespace. Tenant resources are created in
+      the instance's namespace.
+  - expression: >-
+      variables.isAdmin || variables.resources.all(r,
+      !has(r.externalRef) || (has(r.externalRef.metadata.name) &&
+      !has(r.externalRef.metadata.namespace) && !has(r.externalRef.metadata.selector)))
+    message: >-
+      externalRef must name one object in the instance's namespace: set metadata.name,
+      and not metadata.namespace or metadata.selector.
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: kro-multitenancy
+  annotations:
+    kapp.k14s.io/change-group: {{ include "kro.multitenancyPolicyChangeGroup" . | quote }}
+  labels:
+    {{- include "kro.labels" . | nindent 4 }}
+spec:
+  policyName: kro-multitenancy
+  validationActions: ["Deny"]
+---
+# Instances of an organization's kinds (<name>.kro.run) live only in that
+# organization's Supervisor namespaces, which VCF Automation labels with the
+# organization ID.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: kro-multitenancy-instances
+  annotations:
+    kapp.k14s.io/change-group: {{ include "kro.multitenancyPolicyChangeGroup" . | quote }}
+  labels:
+    {{- include "kro.labels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [{{ range $i, $o := .Values.multitenancy.orgs }}{{ if $i }}, {{ end }}{{ printf "%s.kro.run" $o.name | quote }}{{ end }}]
+      apiVersions: ["*"]
+      operations: ["CREATE", "UPDATE"]
+      resources: ["*"]
+  variables:
+  - name: orgIds
+    expression: '{{ $orgIds | toJson }}'
+  - name: org
+    expression: request.resource.group.split(".")[0]
+  - name: nsOrg
+    expression: >-
+      namespaceObject != null && has(namespaceObject.metadata.labels) &&
+      "vmware-system-vcf/organization-id" in namespaceObject.metadata.labels
+      ? namespaceObject.metadata.labels["vmware-system-vcf/organization-id"] : ""
+  validations:
+  - expression: variables.nsOrg == variables.orgIds[variables.org]
+    messageExpression: >-
+      "Instances of " + request.resource.group + " kinds can only be created in namespaces of the "
+      + variables.org + " organization."
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: kro-multitenancy-instances
+  annotations:
+    kapp.k14s.io/change-group: {{ include "kro.multitenancyPolicyChangeGroup" . | quote }}
+  labels:
+    {{- include "kro.labels" . | nindent 4 }}
+spec:
+  policyName: kro-multitenancy-instances
+  validationActions: ["Deny"]
+{{- end }}

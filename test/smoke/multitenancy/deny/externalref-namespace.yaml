@@ -1,0 +1,29 @@
+# An externalRef may not read another namespace.
+# expect: externalRef must name one object in the instance's namespace
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: mt-deny-ref-ns
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: MtDeny
+    group: __ORG__.kro.run
+    spec:
+      message: string | default="hello"
+  resources:
+  - id: configmap
+    template:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: ${schema.metadata.name}-note
+      data:
+        message: ${schema.spec.message}
+  - id: ref
+    externalRef:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: kube-root-ca.crt
+        namespace: kube-system

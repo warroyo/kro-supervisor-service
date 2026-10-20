@@ -1,0 +1,22 @@
+# internal.kro.run belongs to kro.
+# expect: Set spec.schema.group: __ORG__.kro.run
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: mt-deny-internal
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: MtDeny
+    group: internal.kro.run
+    spec:
+      message: string | default="hello"
+  resources:
+  - id: configmap
+    template:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: ${schema.metadata.name}-note
+      data:
+        message: ${schema.spec.message}
