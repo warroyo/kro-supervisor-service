@@ -2,6 +2,12 @@
 
 All notable changes to this service are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The service version is independent of the kro chart version.
 
+## [1.2.1] - Unreleased
+
+### Changed
+
+- Multitenancy: tenant templates and `externalRef`s may set `metadata.namespace` to exactly `${schema.metadata.namespace}`, the instance's own namespace. Upstream examples often do this, and the policy refused them. Any other value, a literal or another expression, is still refused. New smoke fixtures cover both cases.
+
 ## [1.2.0] - Unreleased
 
 ### Added
