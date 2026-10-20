@@ -2,6 +2,17 @@
 
 All notable changes to this service are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The service version is independent of the kro chart version.
 
+## [1.2.0] - Unreleased
+
+### Added
+
+- Multitenancy mode for VCF Automation (`multitenancy.enabled`, off by default). Editors and admins of each organization's author projects author ResourceGraphDefinitions from kubectl or Argo CD, without being Supervisor admins. Author projects are listed per organization by name and uid (`multitenancy.orgs[].authorProjects`), and `multitenancy.oidcClientId` is the OIDC client of VCF Automation on the Supervisor. The ClusterRoleBinding `kro:tenant-author` is bound to the exact author group of each listed project, so only admins and author project editors can read or write RGDs. kapp applies it after the policies and removes it before them. Each organization gets the API group `<name>.kro.run`. The admission policy `kro-multitenancy` checks the author, ownership and content of tenant RGDs, and `kro-multitenancy-instances` keeps an organization's instances in its namespaces. See [docs/authoring-modes.md](docs/authoring-modes.md).
+- `scripts/multitenancy-values.sh` prints the multitenancy values for an author project from `kubectl auth whoami`.
+- A default set of controller permissions (`defaultControllerRules`, on by default): ClusterRole `kro:controller:defaults` lets kro manage the namespaced kinds RGDs commonly use on a Supervisor, including VMs, VKS clusters, DSM databases and Secret Store secrets. `controllerRules` is now for extras only.
+- `make smoke-test-multitenancy` (`test/smoke/multitenancy.sh`): live checks of the multitenancy rules, with one fixture per content rule in `test/smoke/multitenancy/`.
+- `make test-package` builds and pushes a pre-release package to `_out/kro-service.yml` without changing the committed release files.
+- `test/add-namespace-context.sh` adds a kubectl context for a VCF Automation namespace when `vcf context refresh` does not.
+
 ## [1.1.0] - Unreleased
 
 ### Changed

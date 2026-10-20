@@ -1,0 +1,18 @@
+# Layered on values-supervisor.yaml by `make render` to check the multitenancy
+# objects. Not used by `make install-supervisor-service`.
+multitenancy:
+  enabled: true
+  oidcClientId: 4f2c9a1e-7b3d-4c8a-9e61-2d5b8f0a3c7e
+  orgs:
+  - name: goad
+    id: 6b1d3f8a-2c4e-4a7b-8d9f-0e5c7a1b3d2f
+    authorProjects:
+    - name: kro-authors
+      id: 3c5e7a9b-0d2f-4a6c-8e1b-7d9f1a3c5e70
+    - name: Platform Team
+      id: 11111111-2222-4333-8444-555555555555
+  - name: acme
+    id: 00000000-0000-4000-8000-000000000001
+    authorProjects:
+    - name: kro-authors
+      id: 9a7e5c3b-1d2f-4e6a-8b0c-4f3d2e1a0b9c

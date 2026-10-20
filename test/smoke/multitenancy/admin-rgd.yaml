@@ -1,0 +1,21 @@
+# Admin RGD in kro.run, created by a member of admins. Tenant authors may not
+# change or delete it.
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: mt-admin-notes
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: MtAdminNote
+    spec:
+      message: string | default="hello"
+  resources:
+  - id: configmap
+    template:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: ${schema.metadata.name}-admin-note
+      data:
+        message: ${schema.spec.message}

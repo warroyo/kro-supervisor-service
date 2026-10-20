@@ -1,0 +1,142 @@
+{{- if .Values.multitenancy.enabled }}
+{{- if not (regexMatch "^[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$" (.Values.multitenancy.oidcClientId | toString)) }}
+{{- fail "multitenancy.oidcClientId must be the client ID of the VCF Automation identity provider on this Supervisor, a UUID. See docs/authoring-modes.md" }}
+{{- end }}
+{{- if not .Values.multitenancy.orgs }}
+{{- fail "multitenancy.enabled needs at least one entry in multitenancy.orgs" }}
+{{- end }}
+{{- range .Values.multitenancy.orgs }}
+{{- if not (regexMatch "^[a-z0-9]([-a-z0-9]{0,30}[a-z0-9])?$" (.name | toString)) }}
+{{- fail (printf "multitenancy.orgs name %q must be a lowercase DNS label of at most 32 characters" (.name | toString)) }}
+{{- end }}
+{{- if has (.name | toString) (list "internal") }}
+{{- fail (printf "multitenancy.orgs name %q is reserved: %s.kro.run belongs to kro" (.name | toString) (.name | toString)) }}
+{{- end }}
+{{- if not (regexMatch "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" (.id | toString)) }}
+{{- fail (printf "multitenancy.orgs id %q for %s must be a VCF Automation organization UUID" (.id | toString) (.name | toString)) }}
+{{- end }}
+{{- if not .authorProjects }}
+{{- fail (printf "multitenancy.orgs %s needs at least one entry in authorProjects" (.name | toString)) }}
+{{- end }}
+{{- $org := .name }}
+{{- range .authorProjects }}
+{{- if not (regexMatch "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" (.id | toString)) }}
+{{- fail (printf "authorProjects id %q in %s must be the project's UUID (metadata.uid of the Project)" (.id | toString) $org) }}
+{{- end }}
+{{- if not (regexReplaceAll "[^a-z0-9]" (.name | toString | lower) "") }}
+{{- fail (printf "authorProjects name %q in %s must contain at least one letter or digit" (.name | toString) $org) }}
+{{- end }}
+{{- end }}
+{{- end }}
+# RGD writes for the editors and admins of each organization's author projects,
+# by the exact group VCF Automation sends for them. The kro-multitenancy
+# admission policy checks the same groups again, and what the RGD contains.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    kubernetes.io/description: |
+      ResourceGraphDefinition writes for tenant authors. The kro-multitenancy
+      ValidatingAdmissionPolicy limits each organization to its own API group.
+  name: kro:tenant-author
+  labels:
+    {{- include "kro.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - kro.run
+  resources:
+  - resourcegraphdefinitions
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kro:tenant-author
+  annotations:
+    {{- include "kro.afterMultitenancyPolicy" . | nindent 4 }}
+  labels:
+    {{- include "kro.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kro:tenant-author
+subjects:
+{{- range .Values.multitenancy.orgs }}
+{{- range .authorProjects }}
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: {{ include "kro.authorGroup" (dict "project" . "root" $) | quote }}
+{{- end }}
+{{- end }}
+{{- range .Values.multitenancy.orgs }}
+---
+# Instances of {{ .name }}'s kinds (API group {{ .name }}.kro.run): namespace
+# editors and viewers get them like any kro.run kind, and the controller manages
+# them. The kro-multitenancy-instances policy keeps them in {{ .name }}'s namespaces.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kro:tenant:{{ .name }}:edit
+  annotations:
+    {{- include "kro.afterMultitenancyPolicy" $ | nindent 4 }}
+  labels:
+    {{- include "kro.labels" $ | nindent 4 }}
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+rules:
+- apiGroups:
+  - {{ .name }}.kro.run
+  resources: ["*"]
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kro:tenant:{{ .name }}:view
+  labels:
+    {{- include "kro.labels" $ | nindent 4 }}
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+rules:
+- apiGroups:
+  - {{ .name }}.kro.run
+  resources: ["*"]
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kro:tenant:{{ .name }}:controller
+  labels:
+    {{- include "kro.labels" $ | nindent 4 }}
+    rbac.kro.run/aggregate-to-controller: "true"
+rules:
+- apiGroups:
+  - {{ .name }}.kro.run
+  resources: ["*"]
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+{{- end }}
+{{- end }}

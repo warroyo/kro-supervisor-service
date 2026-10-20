@@ -43,10 +43,14 @@ You can set any [upstream chart value](https://github.com/kubernetes-sigs/kro/bl
 
 | Value | Default | Purpose |
 |---|---|---|
-| `namespace` | set by the Supervisor | The service namespace (`svc-kro-domain-cN`). Do not set it. |
+| `namespace` | set by the Supervisor | The service namespace (`svc-kro-<random>`). Do not set it. |
 | `admins.groups` | `[]` | vSphere SSO groups, for example `sso:Administrators@vsphere.local`. Members get ClusterRole `kro:admin`: manage ResourceGraphDefinitions and read GraphRevisions. |
 | `admins.users` | `[]` | vSphere SSO users, for example `sso:alice@vsphere.local`, who get `kro:admin`. Nothing is bound when both lists are empty. |
-| `controllerRules` | `[]` | Extra RBAC rules for the kro controller. Rendered into ClusterRole `kro:controller:supervisor`, labeled `rbac.kro.run/aggregate-to-controller`. |
+| `defaultControllerRules` | `true` | Ships ClusterRole `kro:controller:defaults`: the namespaced kinds RGDs commonly use on a Supervisor (see [Controller](#controller)). |
+| `controllerRules` | `[]` | Extra RBAC rules for the kro controller, on top of the defaults. Rendered into ClusterRole `kro:controller:supervisor`, labeled `rbac.kro.run/aggregate-to-controller`. |
+| `multitenancy.enabled` | `false` | Lets platform teams in VCF Automation organizations author RGDs. See [docs/authoring-modes.md](docs/authoring-modes.md). |
+| `multitenancy.oidcClientId` | `""` | Client ID of the OIDC identity provider VCF Automation registered on this Supervisor. Required when multitenancy is on. |
+| `multitenancy.orgs` | `[]` | Organizations allowed to author, as `name`, `id` and `authorProjects` (a list of project `name` and `id`, the Project's `metadata.uid`; at least one). Each organization gets the API group `<name>.kro.run`. Required when multitenancy is on. |
 
 The service changes two upstream defaults:
 
@@ -63,13 +67,31 @@ The package `valuesSchema` shows the Supervisor defaults, because `make sync` me
 
 In `aggregation` mode the controller can only touch what its aggregated ClusterRoles allow. The service always ships ClusterRole `kro:controller:instances`, which grants all verbs on `kro.run/*`. That lets the controller manage RGD instances.
 
-An RGD can only read (`externalRef`) or create kinds that the controller can access. Add a rule to `controllerRules` for every API group and resource your RGDs use. If a kind is missing, the RGD fails at runtime with a forbidden error. The install example above shows the format.
+An RGD can only read (`externalRef`) or create kinds that the controller can access. With `defaultControllerRules: true` the service grants these, all namespaced:
+
+| Area | Kinds | Access |
+|---|---|---|
+| Kubernetes | ConfigMaps, Secrets, Services, PersistentVolumeClaims, ServiceAccounts; Deployments, StatefulSets; Jobs, CronJobs; HorizontalPodAutoscalers; PodDisruptionBudgets; Ingresses, NetworkPolicies; Gateways, HTTPRoutes; cert-manager Certificates, Issuers | manage |
+| Kubernetes | Pods, Events | read |
+| VM Service | VirtualMachines, VirtualMachineServices, VirtualMachineGroups, VirtualMachineSnapshots, VirtualMachinePublishRequests | manage |
+| VM Service | VirtualMachineClasses, VirtualMachineImages | read |
+| VKS | Clusters (`cluster.x-k8s.io`) | manage |
+| Data Services Manager | PostgresClusters, MySQLClusters | manage |
+| Secret Store | KeyValueSecrets | manage |
+
+RBAC objects, namespaces, quotas and other cluster-scoped kinds are left out on purpose. Add anything else to `controllerRules`. If a kind is missing, the RGD fails at runtime with a forbidden error. The install example above shows the format.
+
+All controller rules apply in every namespace and to every RGD. With multitenancy on, list only namespaced kinds in `controllerRules`: a tenant template has no namespace, so a cluster-scoped kind would be created cluster-wide. The Supervisor also refuses some grants for packages, such as wildcards on the core group or `pods/exec`, and the install fails if one is listed.
 
 To restore the upstream behavior, set `rbac.mode: unrestricted`. This gives the controller `*/*` on the whole cluster.
 
 ### Admins and namespace users
 
-Only the users and groups in `admins` can create and manage RGDs. RGDs are cluster-scoped, so namespace roles never grant them. Namespace users get `kro.run` access through upstream's `kro-edit` and `kro-view` ClusterRoles, which aggregate into the standard `admin`, `edit` and `view` roles.
+By default only the users and groups in `admins` can create and manage RGDs. RGDs are cluster-scoped, so namespace roles never grant them. Namespace users get `kro.run` access through upstream's `kro-edit` and `kro-view` ClusterRoles, which aggregate into the standard `admin`, `edit` and `view` roles.
+
+### Multitenancy
+
+With `multitenancy.enabled: true`, editors and admins of each organization's author projects in VCF Automation also author RGDs, from kubectl or Argo CD. Each organization gets its own API group (`goad.kro.run`), and two admission policies keep its RGDs, kinds and instances inside the organization. [docs/authoring-modes.md](docs/authoring-modes.md) explains both modes with diagrams, the rules, and who can do what.
 
 ## Updating
 
@@ -139,6 +161,50 @@ make smoke-test NAMESPACE=<supervisor-namespace>
 
 `make smoke-test` needs a kubectl context on the Supervisor as a user in `admins` or in one of its groups. It creates the `KroSmoke` RGD in `test/smoke/`, creates an instance in the namespace, checks that the instance becomes a ConfigMap, then deletes both.
 
+To test a change before it is released, build a pre-release package. `make test-package` pushes the bundle to ghcr and writes `_out/kro-service.yml`, and leaves the committed release files as they were:
+
+```bash
+make sync
+make test-package VERSION=1.2.0-rc.1
+SERVICE_YAML=_out/kro-service.yml SERVICE_VALUES=my-values.yaml make install-supervisor-service
+```
+
+### Testing multitenancy on a Supervisor
+
+`make smoke-test-multitenancy` runs `test/smoke/multitenancy.sh`. It checks who may write RGDs, every content rule, and where tenant instances may live. Each content rule has a fixture in `test/smoke/multitenancy/deny/` with the message it must be refused with, so a denial for the wrong reason fails. Add a fixture there when you add a rule. All RGD writes in `deny/` and `allow/` are server-side dry runs.
+
+One-time setup, in an organization that will author (here `acme`):
+
+1. As an org admin of `acme` in VCF Automation, create a project (any name, here `kro-authors`) and a Supervisor namespace in it. With the vcf CLI context of the org (`vcfa` here):
+
+   ```bash
+   kubectl --context vcfa create -f - <<EOF
+   apiVersion: project.cci.vmware.com/v1alpha2
+   kind: Project
+   metadata:
+     name: kro-authors
+   EOF
+   # then a SupervisorNamespace in namespace kro-authors, copied from one of your existing ones
+   ```
+
+   Use `kubectl create`, not `apply`: VCF Automation refuses the annotation that `apply` adds.
+2. Get a kubectl context for the new namespace. `vcf context refresh <context>` should create it. If it does not, run `test/add-namespace-context.sh vcfa kro-authors <namespace>`.
+3. Install the service with multitenancy on. Copy `test/values-live-multitenancy.yaml.example` and set your admins. Run `scripts/multitenancy-values.sh <namespace context> <org name>` with the context from step 2 to print the organization's values, and merge them into the file. List a second organization too, for the checks between organizations.
+
+Then run it with four settings, plus two optional ones for a second organization:
+
+```bash
+export KRO_ADMIN_CONTEXT=sup-gpu                                        # Supervisor, member of admins
+export KRO_AUTHOR_CONTEXT=vcfa:kro-authors-9k6vx:kro-authors            # acme, kro-authors namespace
+export KRO_ORG_USER_CONTEXT=vcfa:dev-1-lbtbl:tenant-1                   # acme, a namespace in another project
+export KRO_ORG=acme
+export KRO_OTHER_ORG_CONTEXT=goad-pe:music-store-8q8l6:default-project  # optional: another organization
+export KRO_OTHER_ORG=goad
+make smoke-test-multitenancy
+```
+
+Non-authors are stopped by RBAC (`is forbidden`), before the admission policy runs. The script creates RGDs `mt-notes` and `mt-admin-notes` and an `MtNote` instance, and deletes them when it ends. Its exit status is the number of failed checks. Run `make smoke-test` too: admins-only behavior must not change.
+
 ### Manual release
 
 CI normally does this. To release by hand, log in to ghcr and run `make release`:
@@ -166,13 +232,20 @@ The fix has two parts. Helm renders the chart into a placeholder namespace, `kro
 ├── Makefile                         # sync, render, validate, release
 ├── kro-service.yml                  # Package + PackageMetadata, written by release
 ├── renovate.json                    # Renovate config for service/vendir.yml
+├── docs/
+│   └── authoring-modes.md           # admins-only vs multitenancy, with diagrams
 ├── scripts/
+│   ├── multitenancy-values.sh       # prints multitenancy values for an author project
 │   └── next-version.sh              # computes the service version after a chart bump
 ├── test/
 │   ├── values-supervisor.yaml       # values used by make render
+│   ├── values-multitenancy.yaml     # layered on top for the multitenancy render
 │   ├── check-rendered.sh            # assertions on the rendered package
+│   ├── check-rendered-multitenancy.sh # assertions on the multitenancy render
+│   ├── values-live-multitenancy.yaml.example # install values for a live multitenancy test
 │   ├── install-supervisor-service.sh # register + install through the vCenter API
-│   └── smoke/                       # KroSmoke RGD round trip on a live Supervisor
+│   ├── add-namespace-context.sh     # kubectl context for a VCF Automation namespace
+│   └── smoke/                       # KroSmoke round trip, and multitenancy.sh with its fixtures
 ├── .github/
 │   ├── actions/setup-tools/         # installs helm, Carvel tools, kubeconform
 │   └── workflows/                   # validate, renovate-sync, release
@@ -183,7 +256,7 @@ The fix has two parts. Helm renders the chart into a placeholder namespace, `kro
     ├── package-resources.yml        # Package and PackageMetadata stubs
     ├── supervisor-overrides/
     │   ├── supervisor-values.yaml   # value overrides (edit this)
-    │   └── templates/supervisor/    # ns-overlay, kro:admin, controller RBAC
+    │   └── templates/supervisor/    # ns-overlay, kro:admin, controller RBAC and defaults, multitenancy
     ├── carvel-artifacts/            # generated package artifacts, committed by release
     └── upstream/                    # filled by make sync, not committed
 ```

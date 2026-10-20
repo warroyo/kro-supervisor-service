@@ -1,0 +1,66 @@
+{{- if and (eq .Values.rbac.mode "aggregation") .Values.defaultControllerRules }}
+# The kinds RGDs commonly create or read on a Supervisor, so admins don't have
+# to list them in controllerRules. Every kind here lives in a namespace: kro
+# puts tenant resources in the instance's namespace, and a cluster-scoped kind
+# would escape that. RBAC, quotas and namespaces are left out on purpose.
+# Groups that a Supervisor doesn't have (no DSM, no cert-manager) are harmless.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    kubernetes.io/description: |
+      Default kinds the kro controller may manage for ResourceGraphDefinitions.
+      Turn off with defaultControllerRules: false; add more with controllerRules.
+  name: {{ include "kro.fullname" . }}:controller:defaults
+  labels:
+    {{- include "kro.labels" . | nindent 4 }}
+    rbac.kro.run/aggregate-to-controller: "true"
+rules:
+# Kubernetes workloads and their configuration
+- apiGroups: [""]
+  resources: [configmaps, secrets, services, persistentvolumeclaims, serviceaccounts]
+  verbs: [get, list, watch, create, update, patch, delete]
+- apiGroups: [""]
+  resources: [pods, events]
+  verbs: [get, list, watch]
+- apiGroups: [apps]
+  resources: [deployments, statefulsets]
+  verbs: [get, list, watch, create, update, patch, delete]
+- apiGroups: [batch]
+  resources: [jobs, cronjobs]
+  verbs: [get, list, watch, create, update, patch, delete]
+- apiGroups: [autoscaling]
+  resources: [horizontalpodautoscalers]
+  verbs: [get, list, watch, create, update, patch, delete]
+- apiGroups: [policy]
+  resources: [poddisruptionbudgets]
+  verbs: [get, list, watch, create, update, patch, delete]
+- apiGroups: [networking.k8s.io]
+  resources: [ingresses, networkpolicies]
+  verbs: [get, list, watch, create, update, patch, delete]
+- apiGroups: [gateway.networking.k8s.io]
+  resources: [gateways, httproutes]
+  verbs: [get, list, watch, create, update, patch, delete]
+- apiGroups: [cert-manager.io]
+  resources: [certificates, issuers]
+  verbs: [get, list, watch, create, update, patch, delete]
+# VM Service
+- apiGroups: [vmoperator.vmware.com]
+  resources: [virtualmachines, virtualmachineservices, virtualmachinegroups, virtualmachinesnapshots, virtualmachinepublishrequests]
+  verbs: [get, list, watch, create, update, patch, delete]
+- apiGroups: [vmoperator.vmware.com]
+  resources: [virtualmachineclasses, virtualmachineimages]
+  verbs: [get, list, watch]
+# VKS clusters
+- apiGroups: [cluster.x-k8s.io]
+  resources: [clusters]
+  verbs: [get, list, watch, create, update, patch, delete]
+# Data Services Manager
+- apiGroups: [databases.dataservices.vmware.com]
+  resources: [postgresclusters, mysqlclusters]
+  verbs: [get, list, watch, create, update, patch, delete]
+# Secret Store Service
+- apiGroups: [secretstore.vmware.com]
+  resources: [keyvaluesecrets]
+  verbs: [get, list, watch, create, update, patch, delete]
+{{- end }}
