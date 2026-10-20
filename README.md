@@ -5,7 +5,7 @@ Packages upstream [kro](https://kro.run) as a vSphere Supervisor Service. kro le
 - Upstream chart: `oci://registry.k8s.io/kro/charts/kro`, currently 0.9.4 ([source](https://github.com/kubernetes-sigs/kro))
 - Carvel package: `kro.field.vmware.com`
 - Bundle: `ghcr.io/warroyo/kro-supervisor-service`
-- Service version: 1.1.0 (see `VERSION`)
+- Service version: in `VERSION`, and on the [releases page](https://github.com/warroyo/kro-supervisor-service/releases)
 
 The service version is independent of the chart version. A fix to the Supervisor overrides can ship without a chart update. See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
 
@@ -15,6 +15,8 @@ The service version is independent of the chart version. A fix to the Supervisor
 2. Add a new service and upload `kro-service.yml` from the [GitHub release](https://github.com/warroyo/kro-supervisor-service/releases).
 3. Install the service on a Supervisor. Provide a values YAML (see below).
 
+`make install-supervisor-service` does steps 2 and 3 through the vCenter API (see [Testing on a Supervisor](#testing-on-a-supervisor)).
+
 Example values:
 
 ```yaml
@@ -23,19 +25,20 @@ admins:
   - sso:Administrators@vsphere.local
   users:
   - sso:alice@vsphere.local
-controllerRules:
-- apiGroups: ["secretstore.vmware.com"]
-  resources: ["keyvaluesecrets"]
-  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-- apiGroups: ["databases.dataservices.vmware.com"]
-  resources: ["postgresclusters"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["vmoperator.vmware.com"]
-  resources: ["virtualmachineservices"]
-  verbs: ["get", "list", "watch"]
 ```
 
-These groups match a VCF 9 Supervisor with Data Services Manager and Secret Store. Check yours with `kubectl api-resources`.
+The controller can already manage the kinds RGDs commonly use on a Supervisor, such as VMs, VKS clusters, DSM databases and Secret Store secrets (see [Controller](#controller)). Add `controllerRules` only for other kinds:
+
+```yaml
+controllerRules:
+- apiGroups: ["monitoring.coreos.com"]
+  resources: ["servicemonitors"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+```
+
+Check which kinds your Supervisor has with `kubectl api-resources`. To let VCF Automation organizations author RGDs, add the `multitenancy` values (see [Multitenancy](#multitenancy)).
+
+An upgrade through `make install-supervisor-service` keeps the values the service already runs with, unless you set `SERVICE_VALUES`.
 
 ## Configuration
 
@@ -93,6 +96,20 @@ By default only the users and groups in `admins` can create and manage RGDs. RGD
 
 With `multitenancy.enabled: true`, editors and admins of each organization's author projects in VCF Automation also author RGDs, from kubectl or Argo CD. Each organization gets its own API group (`goad.kro.run`), and two admission policies keep its RGDs, kinds and instances inside the organization. [docs/authoring-modes.md](docs/authoring-modes.md) explains both modes with diagrams, the rules, and who can do what.
 
+```yaml
+multitenancy:
+  enabled: true
+  oidcClientId: 4f2c9a1e-7b3d-4c8a-9e61-2d5b8f0a3c7e   # VCF Automation's OIDC client on this Supervisor
+  orgs:
+  - name: goad                                       # API group goad.kro.run
+    id: 6b1d3f8a-2c4e-4a7b-8d9f-0e5c7a1b3d2f         # organization UUID
+    authorProjects:
+    - name: kro-authors
+      id: 9a7e5c3b-1d2f-4e6a-8b0c-4f3d2e1a0b9c       # the Project's metadata.uid
+```
+
+You don't need to look these IDs up. Run `scripts/multitenancy-values.sh <namespace-context> <org name>` with a kubectl context for a namespace of the author project, as one of its editors, and it prints this block. Only VCF Automation organizations can author: their users reach the Supervisor through the VCF Automation proxy, which sends the organization and project. vSphere users author only through `admins`.
+
 ## Updating
 
 Updates are automated. A chart bump is a PR you review and merge. A merge to `main` that changes `VERSION` publishes a release.
@@ -130,24 +147,27 @@ Required tools: `vendir`, `ytt`, `kctrl`, `helm`, `yq` (mikefarah v4) and `kubec
 
 ```bash
 make sync       # fetch the chart, merge the overrides, copy the templates
-make render     # render the package to _out/rendered.yaml
-make validate   # render, then kubeconform and test/check-rendered.sh
+make render     # render the package to _out/rendered.yaml and _out/rendered-multitenancy.yaml
+make validate   # render, then kubeconform and the check scripts
 ```
 
 `make sync` runs vendir, deep-merges `service/supervisor-overrides/supervisor-values.yaml` over the chart `values.yaml` (the overrides win), and copies `service/supervisor-overrides/templates/` into the chart. `service/upstream/` is not committed. Edit only `service/supervisor-overrides`.
 
-`make render` renders the way kapp-controller does: `helm template` into the placeholder namespace `kro`, then `ytt`. It uses `test/values-supervisor.yaml`.
+`make render` renders the way kapp-controller does: `helm template` into the placeholder namespace `kro`, then `ytt`. It renders twice: with `test/values-supervisor.yaml`, and with `test/values-multitenancy.yaml` layered on top.
 
-`make validate` runs kubeconform in strict mode, then `test/check-rendered.sh`, which asserts that:
+`make validate` runs kubeconform in strict mode on both renders. Then `test/check-rendered.sh` asserts that:
 
 - nothing is left in the placeholder namespace `kro`
 - the Deployment and ServiceAccount are in the service namespace
 - the controller ClusterRoleBinding subject points at the service namespace
 - the controller pods use the `CRX` node selector
 - no ClusterRole grants `*` on `*` in aggregation mode
-- the controller aggregation ClusterRoles are present (upstream `kro:controller:static`, `kro:controller:instances`, and `controllerRules`)
+- the controller aggregation ClusterRoles are present (upstream `kro:controller:static`, `kro:controller:instances`, `kro:controller:defaults` and `controllerRules`)
+- the default controller rules name every kind, with no wildcards, and include no RBAC, namespaces or other cluster-scoped kinds
 - `kro:admin` is bound to every group and user in `admins`
 - the RGD and GraphRevision CRDs are present
+
+`test/check-rendered-multitenancy.sh` checks the multitenancy render: the author ClusterRoleBinding names one exact group per author project and not `system:authenticated`, the per-organization roles and API groups, both admission policies (fail closed, bound with Deny), and the kapp change group and change rules.
 
 ### Testing on a Supervisor
 
@@ -229,7 +249,7 @@ The fix has two parts. Helm renders the chart into a placeholder namespace, `kro
 .
 ├── VERSION                          # service version, independent of the chart
 ├── CHANGELOG.md
-├── Makefile                         # sync, render, validate, release
+├── Makefile                         # sync, render, validate, release, test-package, install and smoke tests
 ├── kro-service.yml                  # Package + PackageMetadata, written by release
 ├── renovate.json                    # Renovate config for service/vendir.yml
 ├── docs/
